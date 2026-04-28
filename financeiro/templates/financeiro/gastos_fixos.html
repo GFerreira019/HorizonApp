@@ -1,0 +1,162 @@
+{% extends 'base.html' %}
+{% load humanize l10n %}
+
+{% block content %}
+<header class="mb-6 mt-2 flex items-center justify-between">
+    <div class="flex items-center gap-3">
+        <a href="{% url 'dashboard' %}" class="h-10 w-10 rounded-full bg-[#151e32] flex items-center justify-center text-slate-400 hover:text-white hover:bg-slate-700 transition-colors border border-slate-800 shadow-sm" aria-label="Voltar ao Dashboard">
+            <i class="bi bi-arrow-left text-xl"></i>
+        </a>
+        <div>
+            <h2 class="text-2xl font-bold text-white tracking-tight">Custos Fixos</h2>
+            <p class="text-xs text-slate-400 mt-0.5 font-medium">Visão geral do orçamento mensal</p>
+        </div>
+    </div>
+    
+    <button type="button" class="h-10 w-10 rounded-xl bg-gradient-teal flex items-center justify-center text-white shadow-[0_0_15px_rgba(13,148,136,0.4)] hover:scale-105 active:scale-95 transition-transform" aria-label="Adicionar Custo Fixo">
+        <i class="bi bi-plus-lg text-lg pointer-events-none"></i>
+    </button>
+</header>
+
+<section class="card-dark rounded-3xl p-6 shadow-lg mb-8 border border-slate-700/50 relative overflow-hidden">
+    <div class="absolute -right-10 -top-10 w-32 h-32 bg-cyan-500/10 rounded-full blur-2xl pointer-events-none"></div>
+
+    <div class="flex justify-between items-end mb-4 relative z-10">
+        <div>
+            <p class="text-[10px] text-slate-400 font-bold uppercase tracking-widest mb-1">Total Previsto</p>
+            <h3 class="text-3xl font-bold text-white tracking-tight">
+                R$ {{ total_previsto|floatformat:2 }}
+            </h3>
+        </div>
+    </div>
+
+    <div class="mb-2 relative z-10" id="progress-container" data-previsto="{{ total_previsto|unlocalize }}" data-pago="{{ total_pago|unlocalize }}">
+        <div class="flex justify-between text-xs mb-2">
+            <span class="text-emerald-400 font-medium tracking-wide">Pago: R$ {{ total_pago|floatformat:2 }}</span>
+            <span class="text-amber-400 font-medium tracking-wide">Falta: R$ {{ restante|floatformat:2 }}</span>
+        </div>
+        <div class="w-full bg-slate-800 rounded-full h-3 shadow-inner overflow-hidden flex" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100" id="progress-wrapper">
+            <div id="progress-bar" class="bg-gradient-to-r from-emerald-600 to-emerald-400 h-full rounded-full shadow-[0_0_10px_rgba(16,185,129,0.5)] transition-all duration-1000 ease-out" style="width: 0%"></div>
+        </div>
+    </div>
+</section>
+
+<main>
+    <h3 class="text-slate-300 font-bold mb-4 text-sm flex items-center gap-2">
+        <i class="bi bi-calendar3 text-cyan-400"></i> Contas do Mês
+    </h3>
+    
+    <div class="space-y-3 mb-28">
+        {% for item in painel %}
+        <article class="bg-[#151e32] p-4 rounded-2xl border border-slate-800 flex items-center justify-between group relative overflow-hidden transition-all hover:border-slate-600
+            {% if item.status == 'atrasado' %}border-l-4 border-l-red-500
+            {% elif item.status == 'pago' %}border-l-4 border-l-emerald-500
+            {% else %}border-l-4 border-l-amber-500{% endif %}">
+            
+            <div class="flex items-center gap-4">
+                <div class="flex flex-col items-center justify-center h-12 w-12 rounded-xl bg-[#0f172a] border border-slate-700/50 shadow-sm shrink-0">
+                    <span class="text-[10px] text-cyan-500 font-bold uppercase tracking-wider">{{ item.data_vencimento|date:"b" }}</span>
+                    <span class="text-lg font-bold text-slate-200 leading-none">{{ item.data_vencimento|date:"d" }}</span>
+                </div>
+                
+                <div>
+                    <h4 class="text-sm font-bold text-slate-200 truncate">{{ item.despesa.nome }}</h4>
+                    <p class="text-[10px] text-slate-500 mt-0.5 truncate">{{ item.despesa.categoria.nome }}</p>
+                </div>
+            </div>
+            
+            <div class="text-right flex flex-col items-end shrink-0">
+                <span class="text-sm font-bold text-white mb-1">
+                    R$ {{ item.despesa.valor_previsto|floatformat:2 }}
+                </span>
+                
+                {% if item.status == 'pago' %}
+                    <span class="bg-emerald-500/10 text-emerald-400 px-2 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider flex items-center gap-1 border border-emerald-500/20">
+                        <i class="bi bi-check2-all text-xs"></i> Pago
+                    </span>
+                {% elif item.status == 'atrasado' %}
+                    <span class="bg-red-500/10 text-red-500 px-2 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider flex items-center gap-1 border border-red-500/20">
+                        <i class="bi bi-exclamation-circle text-xs"></i> Atrasado
+                    </span>
+                {% else %}
+                    <span class="bg-amber-500/10 text-amber-500 px-2 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider flex items-center gap-1 border border-amber-500/20">
+                        <i class="bi bi-clock text-xs"></i> Pendente
+                    </span>
+                {% endif %}
+            </div>
+        </article>
+        
+        {% empty %}
+        <div class="text-center py-10 border border-dashed border-slate-700 rounded-2xl bg-[#0f172a]/50">
+            <div class="h-12 w-12 rounded-full bg-cyan-500/10 text-cyan-400 flex items-center justify-center mx-auto mb-3 shadow-[0_0_15px_rgba(34,211,238,0.2)]">
+                <i class="bi bi-clipboard-plus text-xl"></i>
+            </div>
+            <p class="text-sm text-slate-300 font-bold">Nenhum gasto fixo cadastrado</p>
+            <p class="text-xs text-slate-500 mt-1">Cadastre seu orçamento para ter previsibilidade.</p>
+        </div>
+        {% endfor %}
+    </div>
+</main>
+
+<nav class="fixed bottom-0 left-0 w-full bg-[#0B1120]/95 backdrop-blur-md border-t border-slate-800 p-2 z-40 pb-5">
+    <div class="grid grid-cols-5 gap-1 max-w-md mx-auto relative">
+        <a href="{% url 'dashboard' %}" class="flex flex-col items-center justify-center p-2 text-slate-500 hover:text-white transition-colors">
+            <i class="bi bi-grid text-lg mb-0.5"></i>
+            <span class="text-[9px] font-medium">Dashboard</span>
+        </a>
+        
+        <a href="{% url 'historico_transacoes' %}" class="flex flex-col items-center justify-center p-2 text-slate-500 hover:text-white transition-colors">
+            <i class="bi bi-arrow-left-right text-lg mb-0.5"></i>
+            <span class="text-[9px] font-medium">Transações</span>
+        </a>
+
+        <div class="relative -top-8">
+            <a href="{% url 'dashboard' %}" class="h-14 w-14 mx-auto rounded-full bg-gradient-teal border-[5px] border-[#0B1120] flex items-center justify-center text-white text-2xl shadow-[0_0_15px_rgba(13,148,136,0.6)] hover:scale-105 transition-transform">
+                <i class="bi bi-plus-lg"></i>
+            </a>
+        </div>
+
+        <a href="{% url 'importar_extrato' %}" class="flex flex-col items-center justify-center p-2 text-slate-500 hover:text-white transition-colors">
+            <i class="bi bi-cloud-arrow-up text-lg mb-0.5"></i>
+            <span class="text-[9px] font-medium">Importar</span>
+        </a>
+
+        <a href="{% url 'tela_auditoria' %}" class="flex flex-col items-center justify-center p-2 text-slate-500 hover:text-white transition-colors relative">
+            <i class="bi bi-shield-check text-lg mb-0.5"></i>
+            <span class="text-[9px] font-medium">Auditoria</span>
+            
+            </a>
+    </div>
+</nav>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        // Anima a barra de progresso lendo os atributos de dados de forma segura (sem conflito de vírgulas)
+        const progressContainer = document.getElementById('progress-container');
+        const progressBar = document.getElementById('progress-bar');
+        const progressWrapper = document.getElementById('progress-wrapper');
+        
+        if (progressContainer && progressBar && progressWrapper) {
+            // O filtro 'unlocalize' do Django na tag HTML já converte o Decimal para um float em string
+            // ex: "1500.50". O parseFloat o entende perfeitamente sem precisar de Replace de vírgulas.
+            const previsto = parseFloat(progressContainer.getAttribute('data-previsto')) || 0;
+            const pago = parseFloat(progressContainer.getAttribute('data-pago')) || 0;
+            
+            let porcentagem = 0;
+            if (previsto > 0) {
+                porcentagem = (pago / previsto) * 100;
+                if (porcentagem > 100) porcentagem = 100; // Trava a barra em 100% se pagar a mais
+            }
+            
+            // Timeout curto (150ms) garante o efeito visual na entrada da página, 
+            // atualizando a UI e as TAGs de Acessibilidade.
+            setTimeout(() => {
+                progressBar.style.width = `${porcentagem}%`;
+                progressWrapper.setAttribute('aria-valuenow', Math.round(porcentagem));
+            }, 150);
+        }
+    });
+</script>
+{% endblock %}

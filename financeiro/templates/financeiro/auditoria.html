@@ -1,0 +1,228 @@
+{% extends 'base.html' %}
+{% load humanize %}
+
+{% block content %}
+<div id="csrf-wrapper" class="hidden">
+    {% csrf_token %}
+</div>
+
+<header class="mb-6 mt-2 flex justify-between items-end border-b border-slate-800/80 pb-4">
+    <div>
+        <h2 class="text-2xl font-bold text-white tracking-tight">Auditoria</h2>
+        <p class="text-xs text-amber-400 mt-1 flex items-center gap-1.5 font-medium">
+            <i class="bi bi-exclamation-triangle-fill animate-pulse"></i> 
+            <span><strong id="qtd" class="font-bold text-sm">{{ qtd_pendente }}</strong> lançamentos pendentes</span>
+        </p>
+    </div>
+</header>
+
+<main class="space-y-4 mb-24" id="lista-auditoria" aria-live="polite">
+    {% for t in pendencias %}
+    <article id="card-{{ t.id }}" class="card-dark rounded-2xl p-5 shadow-lg border-l-4 border-l-amber-500 relative transition-all duration-300 transform origin-top">
+        
+        <div class="flex justify-between items-start mb-3">
+            <div class="pr-3">
+                <span class="text-[10px] font-bold text-slate-500 uppercase tracking-widest">{{ t.data|date:"d/m/Y" }}</span>
+                <h4 class="text-white font-bold text-lg leading-tight mt-0.5 break-words">{{ t.descricao }}</h4>
+            </div>
+            <div class="text-right shrink-0">
+                <h3 class="text-lg font-bold {% if t.categoria.tipo == 'receita' %}text-emerald-400{% else %}text-red-400{% endif %}">
+                    R$ {{ t.valor|floatformat:2 }}
+                </h3>
+                {% if t.categoria.tipo == 'receita' %}
+                    <span class="bg-emerald-500/10 text-emerald-400 px-2 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider border border-emerald-500/20">Entrada</span>
+                {% else %}
+                    <span class="bg-red-500/10 text-red-400 px-2 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider border border-red-500/20">Saída</span>
+                {% endif %}
+            </div>
+        </div>
+        
+        <div class="flex flex-col gap-3 mt-4 bg-[#0f172a] p-3 rounded-xl border border-slate-700/50">
+            <div class="flex items-center gap-3">
+                <div class="flex-1">
+                    <label for="cat-{{ t.id }}" class="sr-only">Selecione a categoria</label>
+                    <select id="cat-{{ t.id }}" class="form-select text-slate-300 w-full select2-audit">
+                        <option value="">Selecione a categoria...</option>
+                        {% for c in categorias %}
+                            {% if c.tipo == t.categoria.tipo and 'Classificar' not in c.nome %}
+                                <option value="{{ c.id }}">{{ c.nome }}</option>
+                            {% endif %}
+                        {% endfor %}
+                    </select>
+                </div>
+                
+                <button type="button" id="btn-{{ t.id }}" data-transacao-id="{{ t.id }}" class="btn-auditar h-10 w-10 shrink-0 rounded-lg bg-gradient-teal text-white flex items-center justify-center hover:scale-105 transition-transform shadow-[0_0_15px_rgba(13,148,136,0.4)]" aria-label="Confirmar classificação">
+                    <i class="bi bi-check-lg text-xl pointer-events-none"></i>
+                </button>
+            </div>
+
+            <div class="flex items-center gap-2 px-1 mt-1">
+                <input type="checkbox" id="regra-{{ t.id }}" class="w-4 h-4 rounded border-slate-600 bg-slate-800 text-cyan-500 focus:ring-cyan-500 focus:ring-offset-slate-900 cursor-pointer">
+                <label for="regra-{{ t.id }}" class="text-[11px] text-slate-400 font-medium cursor-pointer hover:text-slate-300 transition-colors">
+                    Aprender regra (sempre categorizar assim)
+                </label>
+            </div>
+        </div>
+    </article>
+    
+    {% empty %}
+    <div class="text-center py-16 animate-fade-in">
+        <div class="h-20 w-20 rounded-full bg-emerald-500/10 text-emerald-400 flex items-center justify-center mx-auto mb-5 shadow-[0_0_30px_rgba(16,185,129,0.15)]">
+            <i class="bi bi-check2-all text-4xl"></i>
+        </div>
+        <h3 class="text-white font-bold text-xl tracking-wide">Tudo limpo!</h3>
+        <p class="text-sm text-slate-500 mt-2">Nenhum lançamento pendente de conciliação.</p>
+        <a href="{% url 'dashboard' %}" class="mt-6 inline-block bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold py-2 px-4 rounded-lg transition-colors">
+            Voltar ao Dashboard
+        </a>
+    </div>
+    {% endfor %}
+</main>
+
+<nav class="fixed bottom-0 left-0 w-full bg-[#0B1120]/95 backdrop-blur-md border-t border-slate-800 p-2 z-40 pb-5">
+    <div class="grid grid-cols-5 gap-1 max-w-md mx-auto relative">
+        <a href="{% url 'dashboard' %}" class="flex flex-col items-center justify-center p-2 text-slate-500 hover:text-white transition-colors">
+            <i class="bi bi-grid text-lg mb-0.5"></i>
+            <span class="text-[9px] font-medium">Dashboard</span>
+        </a>
+        
+        <a href="{% url 'historico_transacoes' %}" class="flex flex-col items-center justify-center p-2 text-slate-500 hover:text-white transition-colors">
+            <i class="bi bi-arrow-left-right text-lg mb-0.5"></i>
+            <span class="text-[9px] font-medium">Transações</span>
+        </a>
+
+        <div class="relative -top-8">
+            <a href="{% url 'dashboard' %}" class="h-14 w-14 mx-auto rounded-full bg-gradient-teal border-[5px] border-[#0B1120] flex items-center justify-center text-white text-2xl shadow-[0_0_15px_rgba(13,148,136,0.6)] hover:scale-105 transition-transform" aria-label="Voltar para adicionar">
+                <i class="bi bi-plus-lg"></i>
+            </a>
+        </div>
+
+        <a href="{% url 'importar_extrato' %}" class="flex flex-col items-center justify-center p-2 text-slate-500 hover:text-white transition-colors">
+            <i class="bi bi-cloud-arrow-up text-lg mb-0.5"></i>
+            <span class="text-[9px] font-medium">Importar</span>
+        </a>
+
+        <a href="{% url 'tela_auditoria' %}" class="flex flex-col items-center justify-center p-2 text-cyan-400 relative">
+            <i class="bi bi-shield-fill-check text-lg mb-0.5 shadow-cyan-500/50"></i>
+            <span class="text-[9px] font-bold">Auditoria</span>
+            
+            {% if qtd_pendente > 0 %}
+            <span class="absolute top-1 right-2 flex h-2 w-2">
+                <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                <span class="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
+            </span>
+            {% endif %}
+        </a>
+    </div>
+</nav>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        // 1. Inicializa o Select2
+        if (typeof jQuery !== 'undefined') {
+            $('.select2-audit').select2({ width: '100%' });
+        }
+
+        // 2. Intercepta os cliques nos botões de auditar (Clean Code)
+        document.querySelectorAll('.btn-auditar').forEach(button => {
+            button.addEventListener('click', function(event) {
+                // Previne qualquer comportamento padrão
+                event.preventDefault(); 
+                
+                // Puxa o ID que deixamos escondido no 'data-transacao-id'
+                const transacaoId = this.getAttribute('data-transacao-id');
+                
+                // Chama a função assíncrona
+                consolidarIndividual(transacaoId);
+            });
+        });
+    });
+
+    /**
+     * Extrai o Token CSRF dos cookies com segurança.
+     */
+    function getCsrfToken() {
+        const value = `; ${document.cookie}`;
+        const parts = value.split(`; csrftoken=`);
+        if (parts.length === 2) return parts.pop().split(';').shift();
+        
+        // Fallback: Tenta pegar da tag no HTML caso o cookie esteja bloqueado
+        const hiddenInput = document.querySelector('[name=csrfmiddlewaretoken]');
+        return hiddenInput ? hiddenInput.value : '';
+    }
+
+    /**
+     * Envia os dados para o servidor assincronamente e anima a saída do card.
+     */
+    async function consolidarIndividual(transacaoId) {
+        const selectBox = document.getElementById(`cat-${transacaoId}`);
+        const checkRegra = document.getElementById(`regra-${transacaoId}`);
+        const btn = document.getElementById(`btn-${transacaoId}`);
+        const categoriaId = selectBox.value;
+
+        // Validação Front-end
+        if (!categoriaId) {
+            // Foco visual na caixa do select2 para o usuário ver o erro
+            $(selectBox).next('.select2-container').find('.select2-selection').css('border-color', '#ef4444');
+            setTimeout(() => {
+                $(selectBox).next('.select2-container').find('.select2-selection').css('border-color', '');
+            }, 2000);
+            return;
+        }
+
+        // Estado de Loading no botão
+        const iconeOriginal = btn.innerHTML;
+        btn.innerHTML = '<i class="bi bi-arrow-repeat animate-spin"></i>';
+        btn.disabled = true;
+        
+        try {
+            const response = await fetch(`/financeiro/auditoria/consolidar/${transacaoId}/`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCsrfToken()
+                },
+                body: JSON.stringify({ 
+                    'categoria_id': categoriaId,
+                    'criar_regra': checkRegra.checked 
+                })
+            });
+
+            if (response.ok) {
+                const card = document.getElementById(`card-${transacaoId}`);
+                
+                // Animação de saída elegante
+                card.style.transform = 'scale(0.95) translateY(10px)';
+                card.style.opacity = '0';
+                
+                setTimeout(() => { 
+                    card.remove(); 
+                    
+                    // Atualiza o contador
+                    const qtdSpan = document.getElementById('qtd');
+                    const currentVal = parseInt(qtdSpan.innerText);
+                    qtdSpan.innerText = currentVal - 1;
+                    
+                    // Se zerou, recarrega a página para mostrar a tela "Tudo Limpo"
+                    if (currentVal - 1 === 0) {
+                        location.reload();
+                    }
+                }, 300); // Aguarda o CSS transition-duration
+                
+            } else {
+                const data = await response.json();
+                alert(`Erro ao salvar: ${data.mensagem || 'Falha no servidor.'}`);
+                btn.innerHTML = iconeOriginal;
+                btn.disabled = false;
+            }
+        } catch (error) {
+            console.error("Network Error:", error);
+            alert("Erro de conexão. Verifique sua internet e tente novamente.");
+            btn.innerHTML = iconeOriginal;
+            btn.disabled = false;
+        }
+    }
+</script>
+{% endblock %}

@@ -1,0 +1,144 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<header class="mb-6 mt-2">
+    <h2 class="text-2xl font-bold text-white tracking-tight">Importar Extrato</h2>
+    <p class="text-xs text-slate-400 mt-0.5 font-medium tracking-wide">Gestão de arquivos e conciliação.</p>
+</header>
+
+<section>
+    <form id="upload-form" method="post" enctype="multipart/form-data" class="card-dark rounded-3xl p-8 shadow-lg text-center border-dashed border-2 border-slate-700 hover:border-cyan-500/50 transition-colors mb-8 group bg-[#0f172a]/30">
+        {% csrf_token %}
+        
+        <div class="h-20 w-20 rounded-full bg-cyan-500/10 text-cyan-400 flex items-center justify-center mx-auto mb-5 shadow-[0_0_15px_rgba(34,211,238,0.2)] group-hover:scale-110 transition-transform">
+            <i class="bi bi-cloud-arrow-up-fill text-4xl"></i>
+        </div>
+        
+        <h3 class="text-white font-bold mb-2 text-lg">Selecione o arquivo CSV</h3>
+        <p class="text-xs text-slate-500 mb-6">Padrão aceito: Extrato Nubank</p>
+        
+        <div class="relative mb-6 text-left flex justify-center">
+            <input type="file" name="extrato" id="extrato-input" accept=".csv" required
+                class="form-control max-w-xs text-sm text-slate-300 
+                       file:mr-4 file:py-2.5 file:px-4 file:rounded-xl file:border-0 
+                       file:text-xs file:font-bold file:bg-cyan-500/10 file:text-cyan-400 
+                       hover:file:bg-cyan-500/20 file:transition-colors cursor-pointer">
+        </div>
+
+        <button type="submit" id="btn-submit" class="w-full bg-gradient-teal text-white font-bold py-4 rounded-xl shadow-[0_4px_20px_rgba(13,148,136,0.4)] hover:shadow-[0_4px_25px_rgba(13,148,136,0.6)] active:scale-[0.98] transition-all text-sm uppercase tracking-wide flex justify-center items-center gap-2">
+            <i class="bi bi-gear-wide-connected" id="btn-icon"></i> 
+            <span id="btn-text">Processar Dados</span>
+        </button>
+    </form>
+</section>
+
+<section class="mb-28">
+    <h3 class="text-slate-300 font-bold mb-4 text-sm flex items-center gap-2">
+        <i class="bi bi-clock-history text-cyan-400"></i> Arquivos Processados
+    </h3>
+    
+    <div class="space-y-3">
+        {% for lote in lotes %}
+        <article class="bg-[#151e32] p-4 rounded-xl border border-slate-800 flex justify-between items-center group hover:border-slate-600 transition-colors">
+            
+            <div class="flex items-center gap-4 overflow-hidden pr-2">
+                <div class="h-11 w-11 shrink-0 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 flex items-center justify-center shadow-sm">
+                    <i class="bi bi-file-earmark-spreadsheet text-xl"></i>
+                </div>
+                <div class="min-w-0">
+                    <h4 class="text-sm font-bold text-slate-200 truncate">{{ lote.arquivo_nome }}</h4>
+                    <p class="text-[10px] text-slate-500 mt-0.5">Importado em: {{ lote.data_importacao|date:"d/m/Y H:i" }}</p>
+                </div>
+            </div>
+            
+            <div class="flex items-center gap-3 shrink-0">
+                <span class="text-[10px] font-bold text-slate-400 bg-slate-800/80 px-2.5 py-1.5 rounded-lg border border-slate-700 tracking-wide uppercase">
+                    {{ lote.transacoes.count }} Itens
+                </span>
+                
+                <a href="{% url 'excluir_lote' lote.id %}" class="btn-excluir-lote h-9 w-9 rounded-lg bg-red-500/10 text-red-500 flex items-center justify-center hover:bg-red-500 hover:text-white transition-colors border border-red-500/20 hover:border-red-500" aria-label="Excluir Lote">
+                    <i class="bi bi-trash3 pointer-events-none"></i>
+                </a>
+            </div>
+        </article>
+        
+        {% empty %}
+        <div class="text-center py-8 border border-dashed border-slate-700 rounded-2xl bg-[#0f172a]/50">
+            <div class="h-10 w-10 mx-auto rounded-full bg-slate-800 flex items-center justify-center mb-3">
+                <i class="bi bi-inbox text-slate-500"></i>
+            </div>
+            <p class="text-sm text-slate-400 font-medium">Nenhum arquivo importado ainda.</p>
+        </div>
+        {% endfor %}
+    </div>
+</section>
+
+<nav class="fixed bottom-0 left-0 w-full bg-[#0B1120]/95 backdrop-blur-md border-t border-slate-800 p-2 z-40 pb-5">
+    <div class="grid grid-cols-5 gap-1 max-w-md mx-auto relative">
+        <a href="{% url 'dashboard' %}" class="flex flex-col items-center justify-center p-2 text-slate-500 hover:text-white transition-colors">
+            <i class="bi bi-grid text-lg mb-0.5"></i>
+            <span class="text-[9px] font-medium">Dashboard</span>
+        </a>
+        
+        <a href="{% url 'historico_transacoes' %}" class="flex flex-col items-center justify-center p-2 text-slate-500 hover:text-white transition-colors">
+            <i class="bi bi-arrow-left-right text-lg mb-0.5"></i>
+            <span class="text-[9px] font-medium">Transações</span>
+        </a>
+
+        <div class="relative -top-8">
+            <a href="{% url 'dashboard' %}" class="h-14 w-14 mx-auto rounded-full bg-gradient-teal border-[5px] border-[#0B1120] flex items-center justify-center text-white text-2xl shadow-[0_0_15px_rgba(13,148,136,0.6)] hover:scale-105 transition-transform" aria-label="Voltar">
+                <i class="bi bi-plus-lg"></i>
+            </a>
+        </div>
+
+        <a href="{% url 'importar_extrato' %}" class="flex flex-col items-center justify-center p-2 text-cyan-400">
+            <i class="bi bi-cloud-arrow-up-fill text-lg mb-0.5 shadow-cyan-500/50"></i>
+            <span class="text-[9px] font-bold">Importar</span>
+        </a>
+
+        <a href="{% url 'tela_auditoria' %}" class="flex flex-col items-center justify-center p-2 text-slate-500 hover:text-white transition-colors relative">
+            <i class="bi bi-shield-check text-lg mb-0.5"></i>
+            <span class="text-[9px] font-medium">Auditoria</span>
+            
+            </a>
+    </div>
+</nav>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        
+        // 1. Controle de Loading do Formulário (Melhoria de UX)
+        const uploadForm = document.getElementById('upload-form');
+        const btnSubmit = document.getElementById('btn-submit');
+        const btnIcon = document.getElementById('btn-icon');
+        const btnText = document.getElementById('btn-text');
+        
+        if (uploadForm && btnSubmit) {
+            uploadForm.addEventListener('submit', function() {
+                // Desabilita o botão para evitar duplicação de envio e muda o visual
+                btnSubmit.disabled = true;
+                btnSubmit.classList.add('opacity-80', 'cursor-not-allowed');
+                
+                // Gira o ícone e altera o texto
+                btnIcon.className = 'bi bi-arrow-repeat animate-spin text-lg';
+                btnText.textContent = 'Extraindo Dados...';
+            });
+        }
+
+        // 2. Interceptador Seguro para Exclusão (Clean Code)
+        document.querySelectorAll('.btn-excluir-lote').forEach(button => {
+            button.addEventListener('click', function(event) {
+                const confirmed = confirm('⚠️ ATENÇÃO: Essa ação irá apagar definitivamente o arquivo e todos os lançamentos atrelados a ele. Deseja continuar?');
+                
+                if (!confirmed) {
+                    // Se o usuário clicar em "Cancelar", aborta a navegação da tag <a>
+                    event.preventDefault(); 
+                }
+            });
+        });
+
+    });
+</script>
+{% endblock %}
