@@ -2,7 +2,7 @@ from typing import Any
 from datetime import date
 from django import forms
 from django.core.exceptions import ValidationError
-from .models import Transacao
+from .models import Transacao, Categoria, DespesaFixa
 
 
 class TransacaoForm(forms.ModelForm):
@@ -64,21 +64,30 @@ class TransacaoForm(forms.ModelForm):
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         """
-        Inicializa o formulário injetando dados padrão e ajustando 
-        comportamentos dinâmicos de UI baseados no estado da instância.
+        Inicializa o formulário injetando dados padrão e aplicando 
+        o isolamento MULTI-TENANT nos campos de seleção.
         """
         self.user = kwargs.pop('user', None)
         super().__init__(*args, **kwargs)
 
-        # Define data de hoje como padrão se não houver data inicial
         if not self.initial.get('data'):
             self.initial['data'] = date.today()
 
-        # Ajuste visual: Se já está salvo no banco e marcado como pago, altera o visual
         if self.instance.pk and self.instance.pago:
             self.fields['valor'].widget.attrs.update({
-                'class': 'form-control form-control-lg text-muted bg-light',
+                'class': 'form-control form-control-lg text-slate-500 bg-slate-800',
             })
+
+        if self.user:
+            queryset = Categoria.objects.select_related('macro_categoria').filter(
+                usuario=self.user,
+                ativo=True,
+                macro_categoria__ativo=True
+            ).order_by('macro_categoria__ordem', 'nome')
+            
+            queryset = queryset.exclude(macro_categoria__nome__icontains="A Classificar")
+            
+            self.fields['categoria'].queryset = queryset
 
     def clean(self) -> dict[str, Any]:
         """
@@ -89,17 +98,13 @@ class TransacaoForm(forms.ModelForm):
         data_transacao = cleaned_data.get('data')
         pago = cleaned_data.get('pago')
 
-        # 1. Validação de Valor Positivo
         if valor is not None and valor < 0:
             self.add_error(
                 'valor', 
                 "O valor deve ser positivo. O sistema categoriza as saídas automaticamente."
             )
 
-        # 2. Validação de Coerência Temporal
         if pago and data_transacao and data_transacao > date.today():
-            # Dispara um erro de validação limpo. A renderização do ícone 
-            # e das cores (SVG, Divs) deve ser tratada exclusivamente no Template (HTML).
             self.add_error(
                 'data',
                 f"Você marcou como 'Pago', mas a data é futura ({data_transacao.strftime('%d/%m/%Y')}). "
@@ -129,3 +134,27 @@ class AuditoriaForm(forms.ModelForm):
             }),
             'status_auditoria': forms.HiddenInput(),
         }
+
+class DespesaFixaForm(forms.ModelForm):
+    """
+    Formulário para criação e edição de despesas fixas, 
+    com campos específicos para controle de recorrência mensal.
+    """
+    class Meta:
+        model = DespesaFixa
+        fields = ['nome', 'valor_previsto', 'dia_vencimento', 'categoria', 'data_inicio', 'data_fim']
+        widgets = {
+            'data_inicio': forms.DateInput(attrs={'type': 'date', 'class': 'form-input-dark'}),
+            'data_fim': forms.DateInput(attrs={'type': 'date', 'class': 'form-input-dark'}),
+            'valor_previsto': forms.NumberInput(attrs={'step': '0.01', 'class': 'form-input-dark'}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        user = kwargs.pop('user', None)
+        super().__init__(*args, **kwargs)
+        if user:
+            self.fields['categoria'].queryset = Categoria.objects.filter(
+                usuario=user, 
+                macro_categoria__tipo='despesa',
+                ativo=True
+            )

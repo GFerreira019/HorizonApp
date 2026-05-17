@@ -107,9 +107,8 @@
 
 {% block scripts %}
 <script>
+    // Script para controle do formulário de upload e confirmação de exclusão
     document.addEventListener("DOMContentLoaded", function() {
-        
-        // 1. Controle de Loading do Formulário (Melhoria de UX)
         const uploadForm = document.getElementById('upload-form');
         const btnSubmit = document.getElementById('btn-submit');
         const btnIcon = document.getElementById('btn-icon');
@@ -117,23 +116,19 @@
         
         if (uploadForm && btnSubmit) {
             uploadForm.addEventListener('submit', function() {
-                // Desabilita o botão para evitar duplicação de envio e muda o visual
                 btnSubmit.disabled = true;
                 btnSubmit.classList.add('opacity-80', 'cursor-not-allowed');
                 
-                // Gira o ícone e altera o texto
                 btnIcon.className = 'bi bi-arrow-repeat animate-spin text-lg';
                 btnText.textContent = 'Extraindo Dados...';
             });
         }
 
-        // 2. Interceptador Seguro para Exclusão (Clean Code)
         document.querySelectorAll('.btn-excluir-lote').forEach(button => {
             button.addEventListener('click', function(event) {
                 const confirmed = confirm('⚠️ ATENÇÃO: Essa ação irá apagar definitivamente o arquivo e todos os lançamentos atrelados a ele. Deseja continuar?');
                 
                 if (!confirmed) {
-                    // Se o usuário clicar em "Cancelar", aborta a navegação da tag <a>
                     event.preventDefault(); 
                 }
             });

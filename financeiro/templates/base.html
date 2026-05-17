@@ -5,9 +5,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="description" content="HorizonAPP - Previsibilidade e Fluxo de Caixa">
-    <title>{% block title %}HorizonAPP{% endblock %}</title>
+    <title>{% block title %}HorizonAPP{% endblock %}</title>
+    
+    <link rel="icon" href="{% static 'img/icon.png' %}" type="image/png">
 
-    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
     <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
 
@@ -18,7 +20,7 @@
     {% block extra_head %}{% endblock %}
 
     <style>
-        /* --- Formulários Padrão (Dark Mode) --- */
+        /* Formulários Padrão (Dark Mode) */
         .form-control, select, input[type="text"], input[type="number"], input[type="date"] {
             background-color: #1e293b; 
             border-color: #334155; 
@@ -30,13 +32,14 @@
             border-width: 1px;
             transition: border-color 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
         }
+        /* Foco com destaque suave */
         .form-control:focus, input:focus, select:focus { 
             outline: none; 
-            border-color: #6366f1; /* Indigo 500 */
+            border-color: #6366f1;
             box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.2); 
         }
         
-        /* --- Select2 Dark Theme Customization --- */
+        /* Select2 Dark Theme Customization */
         .select2-container--default .select2-selection--single {
             background-color: #1e293b !important; 
             border-color: #334155 !important;
@@ -45,6 +48,7 @@
             display: flex; 
             align-items: center;
         }
+        /* Ajuste do texto do Select2 */
         .select2-container--default .select2-selection--single .select2-selection__rendered {
             color: #e2e8f0 !important; 
             padding-left: 12px;
@@ -53,22 +57,25 @@
         .select2-container--default .select2-selection--single .select2-selection__arrow {
             height: 48px;
         }
+        /* Dropdown do Select2 */
         .select2-dropdown { 
             background-color: #0f172a !important; 
             border-color: #334155 !important; 
         }
+        /* Opções do Select2 */
         .select2-search__field { 
             background-color: #1e293b !important; 
             color: #f8fafc !important; 
             border: 1px solid #334155 !important;
             border-radius: 0.25rem;
         }
+        /* Opções selecionadas do Select2 */
         .select2-results__option--highlighted[aria-selected] { 
-            background-color: #4f46e5 !important; /* Indigo 600 */
+            background-color: #4f46e5 !important;
             color: white !important;
         }
 
-        /* --- Componente: Floating Action Button (FAB) --- */
+        /* Botão Flutuante de Ação (FAB) */
         .fab-btn {
             position: fixed; 
             bottom: 1.5rem; 
@@ -130,12 +137,11 @@
         </div>
         
         <script>
+            // Remove os toasts automaticamente após 5 segundos
             setTimeout(() => {
                 const toasts = document.querySelectorAll('#toast-container > div');
                 toasts.forEach(toast => {
-                    // Adiciona classes para deslizar para fora e sumir
                     toast.classList.add('opacity-0', 'translate-x-full');
-                    // Remove do DOM após o tempo da transição do Tailwind (500ms)
                     setTimeout(() => toast.remove(), 500); 
                 });
             }, 5000);
@@ -162,9 +168,8 @@
     {% endblock %}
 
     <script>
-        // Inicialização global de componentes comuns
+        // Inicialização do Select2 para todos os elementos com a classe .select2-apply
         $(document).ready(function() {
-            // Inicializa automaticamente qualquer select que tiver a classe 'select2-apply'
             if ($('.select2-apply').length > 0) {
                 $('.select2-apply').select2({
                     width: '100%',

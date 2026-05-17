@@ -25,4 +25,14 @@ urlpatterns = [
 
     # Controladoria e Gastos Fixos
     path('fixos/', views.controle_gastos_fixos, name='controle_gastos_fixos'),
+
+    # API para buscar transações (filtro avançado)
+    path('api/buscar-transacoes/', views.buscar_transacoes_ajax, name='buscar_transacoes_ajax'),
+
+    # Cadastrar, Detalhes, Edição e Exclusão de Gastos Fixos
+    path('fixos/cadastrar/', views.cadastrar_despesa_fixa_direta, name='cadastrar_despesa_fixa_direta'),
+    path('fixos/<int:pk>/detalhes/', views.detalhes_despesa_fixa_ajax, name='detalhes_despesa_fixa'),
+    path('fixos/<int:pk>/editar/', views.editar_despesa_fixa, name='editar_despesa_fixa'),
+    path('fixos/<int:pk>/excluir/', views.excluir_despesa_fixa, name='excluir_despesa_fixa'),
+    path('fixos/desvincular/<int:pk>/', views.desvincular_transacao_ajax, name='desvincular_transacao_ajax'),
 ]

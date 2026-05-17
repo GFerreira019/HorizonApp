@@ -26,8 +26,31 @@
 {% endblock %}
 
 {% block content %}
+
+<div class="flex items-center justify-between mb-4 bg-[#151e32] p-2.5 rounded-2xl border border-slate-800 shadow-lg">
+    <div class="flex items-center gap-2.5 pl-2">
+        <div class="h-2 w-2 rounded-full bg-cyan-400 animate-pulse shadow-[0_0_8px_rgba(34,211,238,0.8)]"></div>
+        <span class="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Exibindo</span>
+        <span class="text-sm font-black text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-emerald-400 tracking-wide">
+            {{ filtro_ativo }}
+        </span>
+    </div>
+    
+    <div class="flex gap-1.5">
+        <button type="button" onclick="openPeriodModal()" class="px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase transition-all bg-slate-800 text-slate-300 hover:bg-slate-700 border border-slate-700">
+            <i class="bi bi-funnel mr-1 text-cyan-500"></i> Novo Filtro
+        </button>
+        
+        <a href="?mes={{ hoje.month }}&ano={{ hoje.year }}" class="px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase transition-all bg-gradient-teal text-white shadow-lg shadow-cyan-500/20 active:scale-95">
+            Mês Atual
+        </a>
+    </div>
+</div>
+
 <div class="grid grid-cols-2 gap-3 mb-6 mt-2">
-    <div class="card-dark p-4 rounded-2xl shadow-lg relative overflow-hidden group hover:border-emerald-500/50 transition-all">
+    
+    <a href="{% url 'historico_transacoes' %}?tipo=receita{% if periodo_tudo %}&periodo=tudo{% else %}&mes={{ mes_atual }}&ano={{ ano_atual }}{% endif %}" 
+       class="block card-dark p-4 rounded-2xl shadow-lg relative overflow-hidden group hover:border-emerald-500/50 transition-all">
         <div class="flex justify-between items-start mb-2">
             <span class="text-[11px] text-gray-400 font-medium uppercase tracking-wide">Entradas</span>
             <div class="h-6 w-6 rounded-full bg-emerald-500/10 flex items-center justify-center text-emerald-400 text-xs">
@@ -38,9 +61,10 @@
         <div class="h-1 w-full bg-slate-800 rounded-full mt-1">
             <div class="h-1 bg-emerald-500 rounded-full shadow-[0_0_10px_rgba(16,185,129,0.5)]" style="width: 100%"></div>
         </div>
-    </div>
+    </a>
 
-    <div class="card-dark p-4 rounded-2xl shadow-lg relative overflow-hidden group hover:border-red-500/50 transition-all">
+    <a href="{% url 'historico_transacoes' %}?tipo=despesa{% if periodo_tudo %}&periodo=tudo{% else %}&mes={{ mes_atual }}&ano={{ ano_atual }}{% endif %}" 
+       class="block card-dark p-4 rounded-2xl shadow-lg relative overflow-hidden group hover:border-red-500/50 transition-all">
         <div class="flex justify-between items-start mb-2">
             <span class="text-[11px] text-gray-400 font-medium uppercase tracking-wide">Saídas</span>
             <div class="h-6 w-6 rounded-full bg-red-500/10 flex items-center justify-center text-red-400 text-xs">
@@ -51,20 +75,21 @@
         <div class="h-1 w-full bg-slate-800 rounded-full mt-1">
             <div class="h-1 bg-red-500 rounded-full shadow-[0_0_10px_rgba(239,68,68,0.5)]" style="width: 100%"></div>
         </div>
-    </div>
+    </a>
 
-    <div class="card-dark p-4 rounded-2xl shadow-lg relative overflow-hidden group hover:border-amber-500/50 transition-all">
+    <a href="{% url 'historico_transacoes' %}?tipo=reservado{% if periodo_tudo %}&periodo=tudo{% else %}&mes={{ mes_atual }}&ano={{ ano_atual }}{% endif %}" 
+       class="block card-dark p-4 rounded-2xl shadow-lg relative overflow-hidden group hover:border-amber-500/50 transition-all">
         <div class="flex justify-between items-start mb-2">
             <span class="text-[11px] text-gray-400 font-medium uppercase tracking-wide">Reservado</span>
             <div class="h-6 w-6 rounded-full bg-amber-500/10 flex items-center justify-center text-amber-400 text-xs">
                 <i class="bi bi-gift"></i>
             </div>
         </div>
-        <h3 class="text-lg font-bold text-amber-400 mb-1">R$ 0,00</h3>
+        <h3 class="text-lg font-bold text-amber-400 mb-1">R$ {{ reservados|floatformat:2 }}</h3>
         <div class="h-1 w-full bg-slate-800 rounded-full mt-1">
             <div class="h-1 bg-amber-500 rounded-full" style="width: 0%"></div>
         </div>
-    </div>
+    </a>
 
     <div class="card-dark p-4 rounded-2xl shadow-lg relative overflow-hidden border-cyan-900/50 group transition-all">
         <div class="flex justify-between items-start mb-2">
@@ -222,6 +247,59 @@
     </div>
 </nav>
 
+<div id="periodModal" class="fixed inset-0 z-50 hidden" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+    <div class="fixed inset-0 bg-[#000000]/80 backdrop-blur-sm transition-opacity" onclick="closePeriodModal()"></div>
+    <div class="fixed inset-x-0 bottom-0 z-50 w-full bg-[#151e32] rounded-t-3xl shadow-2xl border-t border-slate-700/50 transform transition-all sm:max-w-md sm:mx-auto sm:relative sm:rounded-xl sm:my-8">
+        
+        <div class="px-6 py-5 border-b border-slate-700/50 flex justify-between items-center">
+            <h3 class="text-lg font-bold text-white tracking-wide">Escolher Período</h3>
+            <button onclick="closePeriodModal()" class="h-8 w-8 rounded-full bg-slate-800 text-slate-400 hover:text-white flex items-center justify-center transition-colors">&times;</button>
+        </div>
+        
+        <div class="p-6 space-y-5">
+            <a href="?periodo=tudo" class="w-full bg-slate-800/50 hover:bg-slate-800 text-cyan-400 border border-slate-700 font-bold py-3.5 rounded-xl flex items-center justify-center gap-2 transition-colors">
+                <i class="bi bi-calendar-range text-lg"></i> Ver Todo o Histórico
+            </a>
+
+            <div class="flex items-center gap-4 my-2">
+                <div class="h-px bg-slate-800 flex-1"></div>
+                <span class="text-[10px] text-slate-500 font-bold uppercase tracking-widest">Ou escolha um mês</span>
+                <div class="h-px bg-slate-800 flex-1"></div>
+            </div>
+
+            <form method="get" class="space-y-4">
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="text-[10px] text-slate-400 font-bold mb-1.5 block uppercase tracking-wider">Mês</label>
+                        <select name="mes" class="form-select text-slate-300 w-full bg-[#0f172a] border-slate-700 rounded-lg p-3">
+                            <option value="1" {% if mes_atual == 1 %}selected{% endif %}>Janeiro</option>
+                            <option value="2" {% if mes_atual == 2 %}selected{% endif %}>Fevereiro</option>
+                            <option value="3" {% if mes_atual == 3 %}selected{% endif %}>Março</option>
+                            <option value="4" {% if mes_atual == 4 %}selected{% endif %}>Abril</option>
+                            <option value="5" {% if mes_atual == 5 %}selected{% endif %}>Maio</option>
+                            <option value="6" {% if mes_atual == 6 %}selected{% endif %}>Junho</option>
+                            <option value="7" {% if mes_atual == 7 %}selected{% endif %}>Julho</option>
+                            <option value="8" {% if mes_atual == 8 %}selected{% endif %}>Agosto</option>
+                            <option value="9" {% if mes_atual == 9 %}selected{% endif %}>Setembro</option>
+                            <option value="10" {% if mes_atual == 10 %}selected{% endif %}>Outubro</option>
+                            <option value="11" {% if mes_atual == 11 %}selected{% endif %}>Novembro</option>
+                            <option value="12" {% if mes_atual == 12 %}selected{% endif %}>Dezembro</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="text-[10px] text-slate-400 font-bold mb-1.5 block uppercase tracking-wider">Ano</label>
+                        <input type="number" name="ano" value="{{ ano_atual }}" class="form-control text-slate-300 w-full bg-[#0f172a] border-slate-700 rounded-lg p-3">
+                    </div>
+                </div>
+                
+                <button type="submit" class="w-full bg-[#1e293b] hover:bg-slate-700 text-white border border-slate-600 font-bold py-3.5 rounded-xl shadow-lg transition-colors text-sm uppercase tracking-wide mt-2">
+                    Aplicar Filtro
+                </button>
+            </form>
+        </div>
+    </div>
+</div>
+
 <div id="transactionModal" class="fixed inset-0 z-50 hidden" aria-labelledby="modal-title" role="dialog" aria-modal="true">
     <div class="fixed inset-0 bg-[#000000]/80 backdrop-blur-sm transition-opacity" onclick="closeModal()"></div>
     
@@ -293,20 +371,44 @@
                 </div>
             </div>
 
+            <input type="hidden" name="transacao_padrao_id" id="transacao_padrao_id">
+
+            <button type="button" onclick="abrirBuscaTransacao()" id="btnSelecionarPadrao" class="w-full mt-4 bg-slate-800/80 hover:bg-slate-700 text-cyan-400 border border-slate-700 border-dashed text-xs font-bold py-3 rounded-xl flex items-center justify-center gap-2 transition-all">
+                <i class="bi bi-search"></i> Vincular a uma Transação Passada
+            </button>
+
             <button type="submit" class="w-full bg-gradient-teal text-white font-bold py-4 rounded-xl shadow-[0_4px_20px_rgba(13,148,136,0.4)] hover:shadow-[0_4px_25px_rgba(13,148,136,0.6)] transition-all mt-2 text-sm uppercase tracking-wide">
                 Salvar Transação
             </button>
         </form>
     </div>
 </div>
+
+<div id="modalBuscaTransacao" class="fixed inset-0 z-[70] hidden" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+    <div class="fixed inset-0 bg-[#000000]/80 backdrop-blur-sm" onclick="fecharBuscaTransacao()"></div>
+    
+    <div class="fixed inset-x-0 top-16 mx-auto max-w-md bg-[#151e32] rounded-3xl shadow-2xl border border-slate-700 flex flex-col max-h-[75vh]">
+        <div class="p-5 border-b border-slate-700/50 flex items-center justify-between">
+            <h3 class="text-white font-bold tracking-wide">Selecionar Padrão</h3>
+            <button type="button" onclick="fecharBuscaTransacao()" class="text-slate-400 hover:text-white"><i class="bi bi-x-lg text-lg"></i></button>
+        </div>
+        
+        <div class="p-5 flex-1 overflow-hidden flex flex-col">
+            <input type="text" id="inputBuscaTransacao" placeholder="Pesquise (ex: Netflix, Spotify)..." class="form-control w-full bg-[#0f172a] text-sm text-white border-slate-600 rounded-xl p-3 mb-4 focus:border-cyan-500">
+            
+            <div id="listaTransacoesBusca" class="overflow-y-auto flex-1 space-y-2 pr-2 custom-scrollbar">
+                </div>
+        </div>
+    </div>
+</div>
+
 {% endblock %}
 
 {% block scripts %}
 <script>
-    // Unificando a inicialização de Scripts (Clean Code)
+    // Unificando a inicialização de Scripts
     document.addEventListener("DOMContentLoaded", function() {
         
-        // 1. Inicializa Plugins jQuery
         if (typeof jQuery !== 'undefined') {
             $('#id_categoria').select2({ 
                 placeholder: "Selecione...", 
@@ -314,10 +416,8 @@
             });
         }
 
-        // 2. Carrega Gráficos
         loadCharts();
 
-        // 3. Lógica do Modal de Fixos
         const checkFixo = document.getElementById('check-fixo');
         const containerPrazos = document.getElementById('container-prazos');
 
@@ -333,7 +433,6 @@
             });
         }
 
-        // 4. Reabrir modal automaticamente se houver erro no form após submit
         const errorBox = document.getElementById('form-errors-box');
         if (errorBox) {
             openModal();
@@ -345,17 +444,18 @@
         document.getElementById('transactionModal').classList.remove('hidden'); 
     }
     
+    // Fechar modal ao clicar fora ou no botão de fechar
     function closeModal() { 
         document.getElementById('transactionModal').classList.add('hidden'); 
     }
 
     // Inicialização do Chart.js
     async function loadCharts() {
-        // Doughnut Chart (Dados Reais do Backend)
         try {
             const ctxDoughnut = document.getElementById('financeChart');
             if (ctxDoughnut) {
-                const response = await fetch("{% url 'get_chart_data' %}");
+                const params = new URLSearchParams(window.location.search);
+                const response = await fetch(`{% url 'get_chart_data' %}?${params.toString()}`);
                 const data = await response.json();
                 const jorryColors = ['#22d3ee', '#3b82f6', '#8b5cf6', '#10b981', '#f59e0b', '#ef4444'];
 
@@ -380,7 +480,6 @@
             console.error("Erro ao carregar dados do gráfico principal:", error);
         }
 
-        // Line Chart (TODO: Mock de Dados - Implementar API no futuro)
         const ctxLine = document.getElementById('lineChart');
         if (ctxLine) {
             let context = ctxLine.getContext('2d');
@@ -412,5 +511,73 @@
             });
         }
     }
+    
+    // Funções de Controle de UI
+    function openPeriodModal() { 
+        document.getElementById('periodModal').classList.remove('hidden'); 
+    }
+    
+    // Fechar modal ao clicar fora ou no botão de fechar
+    function closePeriodModal() { 
+        document.getElementById('periodModal').classList.add('hidden'); 
+    }
+
+    // Funções do Pop-up de Vínculo de Despesa Fixa
+    function abrirBuscaTransacao() {
+        document.getElementById('modalBuscaTransacao').classList.remove('hidden');
+        buscarTransacoesAPI('');
+    }
+
+    // Fechar modal ao clicar fora ou no botão de fechar
+    function fecharBuscaTransacao() {
+        document.getElementById('modalBuscaTransacao').classList.add('hidden');
+    }
+
+    // Escuta a digitação na barra de pesquisa
+    document.getElementById('inputBuscaTransacao').addEventListener('input', function(e) {
+        buscarTransacoesAPI(e.target.value);
+    });
+
+    // Função para buscar transações via API e atualizar a lista
+    async function buscarTransacoesAPI(termo) {
+        const response = await fetch(`/api/buscar-transacoes/?q=${termo}`);
+        const data = await response.json();
+        const lista = document.getElementById('listaTransacoesBusca');
+        lista.innerHTML = '';
+        
+        if (data.transacoes.length === 0) {
+            lista.innerHTML = '<p class="text-xs text-slate-500 text-center py-6 font-bold uppercase tracking-wide">Nenhuma transação encontrada</p>';
+            return;
+        }
+
+        data.transacoes.forEach(t => {
+            const div = document.createElement('div');
+            div.className = 'p-3 bg-slate-800/50 hover:bg-slate-700 rounded-xl cursor-pointer border border-slate-700/50 flex justify-between items-center transition-colors group';
+            div.innerHTML = `
+                <div class="overflow-hidden pr-2">
+                    <p class="text-sm text-slate-200 font-bold truncate group-hover:text-cyan-400 transition-colors">${t.descricao}</p>
+                    <p class="text-[10px] text-slate-500 mt-0.5"><i class="bi bi-calendar3"></i> ${t.data}</p>
+                </div>
+                <span class="text-xs font-black text-slate-300 whitespace-nowrap bg-[#0f172a] px-2 py-1 rounded-md">R$ ${t.valor.toFixed(2)}</span>
+            `;
+            div.onclick = () => confirmarVinculo(t.id, t.descricao);
+            lista.appendChild(div);
+        });
+    }
+
+    // Função para confirmar o vínculo de uma transação
+    function confirmarVinculo(id, descricao) {
+        if (confirm(`Deseja usar "${descricao}" como padrão? \nSempre que o Nubank importar algo parecido, será classificado automaticamente nesta Despesa Fixa.`)) {
+            document.getElementById('transacao_padrao_id').value = id;
+            
+            const btn = document.getElementById('btnSelecionarPadrao');
+            btn.innerHTML = `<i class="bi bi-check2-all text-lg"></i> Vinculado: ${descricao.substring(0, 18)}...`;
+            btn.classList.remove('bg-slate-800/80', 'text-cyan-400', 'border-slate-700', 'border-dashed');
+            btn.classList.add('bg-emerald-500/10', 'text-emerald-400', 'border-emerald-500/30', 'border-solid');
+            
+            fecharBuscaTransacao();
+        }
+    }
+
 </script>
 {% endblock %}
