@@ -1,0 +1,250 @@
+{% load i18n %}
+{% load allauth account socialaccount %}
+{% load static %}
+<!DOCTYPE html>
+<html lang="pt-br" class="h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="description" content="HorizonAPP — Crie sua conta e comece a controlar seu futuro financeiro">
+    <title>Cadastro — HorizonAPP</title>
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <link rel="icon" type="image/png" href="{% static 'img/icon.png' %}">
+
+    <style>
+        body { background-color: #0B1120; }
+
+        .card-dark {
+            background-color: #151e32;
+            border: 1px solid #1e2d47;
+        }
+
+        .form-control, .form-input-dark {
+            background-color: #0f172a;
+            border: 1px solid #2a3449;
+            color: #e2e8f0;
+            border-radius: 0.75rem;
+            padding: 0.875rem 1rem;
+            width: 100%;
+            display: block;
+            font-size: 0.875rem;
+            transition: border-color 0.2s ease, box-shadow 0.2s ease;
+        }
+        .form-control:focus, .form-input-dark:focus {
+            outline: none;
+            border-color: #06b6d4;
+            box-shadow: 0 0 0 3px rgba(6, 182, 212, 0.15);
+        }
+        .form-control::placeholder, .form-input-dark::placeholder { color: #475569; }
+
+        /* Limpa estilo das listas de help_text geradas pelo Django */
+        .help-text-clean ul {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+        .help-text-clean li {
+            position: relative;
+            padding-left: 0.85rem;
+            margin-bottom: 0.15rem;
+        }
+        .help-text-clean li::before {
+            content: '•';
+            position: absolute;
+            left: 0;
+            color: #475569;
+        }
+
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(14px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fade-in-up { animation: fadeInUp 0.4s ease forwards; }
+    </style>
+</head>
+<body class="min-h-full flex items-center justify-center p-4 py-10">
+
+    <div class="w-full max-w-sm animate-fade-in-up">
+
+        {# ── Logotipo ── #}
+        <div class="text-center mb-7">
+            <div class="inline-flex items-center justify-center h-12 w-12 rounded-2xl bg-white shadow-md shadow-black/20 mb-3 overflow-hidden border border-slate-100">
+                <img src="{% static 'img/icon.png' %}" alt="Ícone HorizonAPP" class="h-8 w-8 object-contain">
+            </div>
+            <h1 class="text-2xl font-black text-white tracking-tight">
+                Horizon<span class="text-indigo-500">APP</span>
+            </h1>
+            <p class="text-slate-500 text-xs mt-1 font-medium tracking-wide uppercase">Crie sua conta gratuita</p>
+        </div>
+
+        {# ═══════════════════════════════════════════════════════════ #}
+        {# CARD PRINCIPAL                                              #}
+        {# ═══════════════════════════════════════════════════════════ #}
+        <div class="card-dark rounded-2xl shadow-2xl shadow-black/50 overflow-hidden">
+
+            {# ── Header do card ── #}
+            <div class="px-6 py-4 border-b border-slate-800 flex items-center gap-2.5">
+                <div class="h-2 w-2 rounded-full bg-indigo-400 animate-pulse shadow-[0_0_8px_rgba(129,140,248,0.7)]"></div>
+                <span class="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Novo Cadastro</span>
+            </div>
+
+            <div class="p-6">
+
+                {# ── Erros globais do formulário ── #}
+                {% if form.non_field_errors %}
+                <div class="mb-4 bg-red-950/70 border border-red-700/50 text-red-300 text-xs p-3 rounded-xl flex items-start gap-2.5">
+                    <i class="bi bi-exclamation-triangle-fill text-red-400 text-sm flex-shrink-0 mt-0.5"></i>
+                    <div>
+                        {% for error in form.non_field_errors %}
+                        <p>{{ error }}</p>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endif %}
+
+                {# ── Cadastro Social (Google + Facebook) — só aparece se configurado ── #}
+                {% get_providers as socialaccount_providers %}
+                {% if socialaccount_providers %}
+                <div class="flex items-center my-5">
+                    <div class="flex-grow border-t border-slate-800"></div>
+                    <span class="text-slate-500 text-xs uppercase tracking-wider px-3 font-medium">Ou continue com</span>
+                    <div class="flex-grow border-t border-slate-800"></div>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-5">
+                    <a href="{% provider_login_url 'google' process='login' %}"
+                       id="btn-google-signup"
+                       class="flex items-center justify-center gap-2 px-4 py-2.5 bg-slate-800/50 hover:bg-slate-800 border border-slate-700/60 hover:border-slate-600 rounded-xl text-slate-200 text-sm font-medium transition-all duration-200 shadow-sm">
+                        <svg class="w-4 h-4 flex-shrink-0" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
+                            <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
+                            <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
+                            <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>
+                            <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
+                            <path fill="none" d="M0 0h48v48H0z"/>
+                        </svg>
+                        Google
+                    </a>
+
+                    <a href="{% provider_login_url 'facebook' process='login' %}"
+                       id="btn-facebook-signup"
+                       class="flex items-center justify-center gap-2 px-4 py-2.5 bg-[#1877F2] hover:bg-[#166FE5] rounded-xl text-white text-sm font-medium transition-all duration-200 shadow-sm">
+                        <i class="bi bi-facebook"></i> Facebook
+                    </a>
+                </div>
+                {% endif %}
+
+                {# ── Formulário de Cadastro (campos renderizados manualmente) ── #}
+                <form method="POST" action="{% url 'account_signup' %}" class="space-y-4" id="signup-form" enctype="multipart/form-data">
+                    {% csrf_token %}
+
+                    {% include 'financeiro/partials/form_perfil.html' with form=form %}
+
+                    {% for field in form %}
+                    {% if field.name != 'nome' and field.name != 'telefone' and field.name != 'data_nascimento' and field.name != 'sexo' and field.name != 'foto_perfil' %}
+                    <div>
+                        {# Label #}
+                        <label class="block text-[10px] font-bold uppercase tracking-widest mb-1.5
+                                      {% if field.errors %}text-red-400{% elif forloop.first %}text-cyan-400{% else %}text-slate-400{% endif %}"
+                               for="{{ field.id_for_label }}">
+                            {{ field.label }}
+                        </label>
+
+                        {# Input renderizado manualmente para garantir classes corretas #}
+                        {% if field.name == 'email' %}
+                            <input type="email" name="{{ field.html_name }}" id="{{ field.id_for_label }}"
+                                   value="{{ request.GET.email|default:field.value|default:'' }}"
+                                   class="form-control {% if field.errors %}!border-red-500/60{% endif %}"
+                                   placeholder="seu@email.com"
+                                   autocomplete="email"
+                                   {% if forloop.first %}autofocus{% endif %}
+                                   required>
+                        {% elif 'password' in field.name %}
+                            <input type="password" name="{{ field.html_name }}" id="{{ field.id_for_label }}"
+                                   class="form-control {% if field.errors %}!border-red-500/60{% endif %}"
+                                   placeholder="{% if '2' in field.name %}Repita a senha{% else %}Mínimo 8 caracteres{% endif %}"
+                                   autocomplete="new-password"
+                                   minlength="8"
+                                   required>
+                        {% else %}
+                            {# Fallback genérico para campos inesperados (ex: username se reativado) #}
+                            <input type="text" name="{{ field.html_name }}" id="{{ field.id_for_label }}"
+                                   value="{{ field.value|default:'' }}"
+                                   class="form-control {% if field.errors %}!border-red-500/60{% endif %}"
+                                   placeholder="{{ field.label }}"
+                                   {% if forloop.first %}autofocus{% endif %}>
+                        {% endif %}
+
+                        {# Erros do campo e requisitos (apenas visíveis em caso de erro) #}
+                        {% if field.errors %}
+                        <div class="mt-1.5 bg-red-500/10 border border-red-700/40 rounded-lg p-2">
+                            <p class="text-red-400 text-xs mt-1">{{ field.errors|striptags }}</p>
+                            {% if field.help_text %}
+                            <p class="text-red-400 text-xs mt-1">{{ field.help_text|striptags }}</p>
+                            {% endif %}
+                        </div>
+                        {% endif %}
+                    </div>
+                    {% endif %}
+                    {% endfor %}
+
+                    {# Botão de submissão #}
+                    <button type="submit" id="btn-signup-submit"
+                        class="w-full mt-2 py-3.5 rounded-xl font-bold text-sm text-white uppercase tracking-wide
+                               bg-gradient-to-r from-indigo-600 to-violet-600
+                               hover:from-indigo-500 hover:to-violet-500
+                               shadow-lg shadow-indigo-900/30 hover:shadow-indigo-900/50
+                               active:scale-[0.98] transition-all duration-200">
+                        <i class="bi bi-person-check mr-1.5"></i>
+                        Criar Minha Conta
+                    </button>
+                </form>
+
+                {# ── Link para login ── #}
+                <p class="text-center text-xs text-slate-500 mt-5">
+                    Já tem uma conta?
+                    <a href="{% url 'account_login' %}"
+                       class="text-cyan-400 hover:text-cyan-300 font-semibold transition-colors ml-1 hover:underline">
+                        Entre aqui
+                    </a>
+                </p>
+
+            </div>
+        </div>
+
+        {# ── Rodapé ── #}
+        <p class="text-center text-[10px] text-slate-700 mt-6 tracking-wide">
+            &copy; {% now "Y" %} HorizonAPP &mdash; Seus dados. Sua privacidade.
+        </p>
+
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const form = document.getElementById('signup-form');
+            if (form) {
+                form.addEventListener('submit', function(e) {
+                    const passInputs = form.querySelectorAll('input[type="password"]');
+                    if (passInputs.length >= 2) {
+                        const pass1 = passInputs[0];
+                        const pass2 = passInputs[1];
+                        
+                        if (pass1.value.length < 8) {
+                            e.preventDefault();
+                            alert('A senha deve ter pelo menos 8 caracteres.');
+                            return;
+                        }
+                        
+                        if (pass1.value !== pass2.value) {
+                            e.preventDefault();
+                            alert('As senhas não coincidem. Verifique a digitação.');
+                            return;
+                        }
+                    }
+                });
+            }
+        });
+    </script>
+</body>
+</html>

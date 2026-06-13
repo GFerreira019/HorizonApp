@@ -1,12 +1,30 @@
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 from django.conf import settings
-from .models import MacroCategoria, Categoria
+from .models import MacroCategoria, Categoria, PerfilUsuario
+
+# Dicionário de Ícones para cada MacroCategoria
+ICONES_MACRO = {
+    'Renda Principal': 'bi-cash-stack',
+    'Renda Extra': 'bi-graph-up-arrow',
+
+    'Moradia': 'bi-house',
+    'Contas Residenciais': 'bi-lightning',
+    'Alimentação': 'bi-cart3',
+    'Transporte': 'bi-car-front',
+    'Saúde e Bem-estar': 'bi-heart-pulse',
+    'Educação': 'bi-book',
+    'Lazer e Estilo de Vida': 'bi-controller',
+    'Cuidados Pessoais e Compras': 'bi-scissors',
+    'Serviços Financeiros': 'bi-bank',
+
+    'Investimentos e Futuro': 'bi-safe',
+}
 
 # Plano de Contas Padrão mapeado em um Dicionário
 PLANILHA_PADRAO = {
     'receita': {
-        'Rendimentos Oficiais': [('Salário', 'bi-cash-stack'), ('Adiantamento', 'bi-wallet2')],
+        'Renda Principal': [('Salário', 'bi-cash-stack'), ('Adiantamento', 'bi-wallet2')],
         'Renda Extra': [('Freelance', 'bi-laptop'), ('Vendas', 'bi-shop'), ('Rendimentos/Dividendos', 'bi-graph-up-arrow')],
     },
     'despesa': {
@@ -51,3 +69,12 @@ def criar_categorias_padrao(sender, instance, created, **kwargs):
                         icone=icone
                     )
                 ordem += 1
+
+
+@receiver(post_save, sender=settings.AUTH_USER_MODEL)
+def criar_perfil_usuario(sender, instance, created, **kwargs):
+    """Garante que todo User tenha um PerfilUsuario associado (retrocompatível)."""
+    if created:
+        PerfilUsuario.objects.create(usuario=instance)
+    else:
+        PerfilUsuario.objects.get_or_create(usuario=instance)

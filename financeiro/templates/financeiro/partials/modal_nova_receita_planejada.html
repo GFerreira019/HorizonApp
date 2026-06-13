@@ -1,0 +1,145 @@
+{% load static %}
+{# ============================================================= #}
+{# Modal "Gerenciar Receita" — modo duplo (Criar / Editar via AJAX) #}
+{# ============================================================= #}
+<div id="modalNovaReceitaPlanejada" class="fixed inset-0 bg-black/80 backdrop-blur-sm hidden flex justify-center items-center z-[60] p-4">
+    <div class="bg-[#0B1120] border border-slate-700 rounded-2xl p-6 w-full max-w-lg max-h-[92vh] overflow-y-auto shadow-2xl custom-scrollbar">
+
+        {# Cabeçalho #}
+        <div class="flex justify-between items-center mb-6 border-b border-slate-800 pb-4">
+            <div>
+                <h2 id="modalReceitaTitulo" class="text-xl font-bold text-white tracking-tight">Nova Fonte de Receita</h2>
+                <p id="modalNovaReceitaSubtitulo" class="text-xs text-slate-400 mt-1">Planeje uma entrada recorrente</p>
+            </div>
+            <button type="button" onclick="fecharModalNovaReceitaPlanejada()"
+                class="h-8 w-8 bg-slate-800 rounded-full text-slate-400 hover:text-white hover:bg-slate-700 flex items-center justify-center transition-colors shrink-0">
+                <i class="bi bi-x-lg text-sm pointer-events-none"></i>
+            </button>
+        </div>
+
+        {# Formulário principal #}
+        <form id="formReceitaPlanejada" method="POST" action="{% url 'cadastrar_receita_planejada' %}">
+            {% csrf_token %}
+            <input type="hidden" name="next" value="{{ redirect_next }}">
+            <input type="hidden" name="macro_id" id="macroIdNovaReceita" value="">
+            {# Hidden: ID da transação padrão selecionada para vincular a regra #}
+            <input type="hidden" name="transacao_padrao_id" id="transacaoPadraoIdReceita" value="">
+
+            <div class="space-y-4 mb-6">
+                <div>
+                    <label class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1 block">Nome da Receita</label>
+                    <input type="text" name="nome" id="receitaNome" placeholder="Ex: Salário CLT, Freelance"
+                        class="w-full bg-[#151e32] text-white border border-slate-700 rounded-xl p-3 text-sm focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 outline-none transition-colors" required>
+                </div>
+
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1 block">Valor Previsto (R$)</label>
+                        <input type="number" step="0.01" name="valor_previsto" id="receitaValor"
+                            class="w-full bg-[#151e32] text-white border border-slate-700 rounded-xl p-3 text-sm focus:border-cyan-500 outline-none" required>
+                    </div>
+                    <div>
+                        <label class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1 block">Dia do Recebimento</label>
+                        <input type="number" name="dia_recebimento" id="receitaDia" min="1" max="31" value="1"
+                            class="w-full bg-[#151e32] text-white border border-slate-700 rounded-xl p-3 text-sm focus:border-cyan-500 outline-none" required>
+                    </div>
+                </div>
+
+                <div>
+                    <div class="flex justify-between items-center mb-1">
+                        <label class="text-xs font-bold text-slate-400 uppercase tracking-wider block">Categoria</label>
+                        <button type="button" onclick="abrirModalGerenciarCategorias()" class="text-slate-400 hover:text-emerald-400 text-xs flex items-center gap-1.5 transition-colors font-medium">
+                            <i class="bi bi-gear-fill"></i> Gerenciar Categorias
+                        </button>
+                    </div>
+                    <select name="categoria" id="categoriaNovaReceita"
+                        class="w-full bg-[#151e32] text-white border border-slate-700 rounded-xl p-3 text-sm focus:border-cyan-500 outline-none" required>
+                        <option value="" disabled selected>Selecione uma categoria...</option>
+                        {% for cat in categorias_receita %}
+                        <option value="{{ cat.id }}" data-macro-id="{{ cat.macro_categoria_id }}">
+                            {{ cat.macro_categoria.nome }} &gt; {{ cat.nome }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1 block">Data de Início</label>
+                        <input type="date" name="data_inicio" id="receitaDataInicio"
+                            class="w-full bg-[#151e32] text-slate-300 border border-slate-700 rounded-xl p-3 text-sm focus:border-cyan-500 outline-none" required>
+                    </div>
+                    <div>
+                        <label class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1 block">Fim (Opcional)</label>
+                        <input type="date" name="data_fim" id="receitaDataFim"
+                            class="w-full bg-[#151e32] text-slate-300 border border-slate-700 rounded-xl p-3 text-sm focus:border-cyan-500 outline-none">
+                    </div>
+                </div>
+
+                {# ── Vínculo com transação padrão (apenas em modo edição) ── #}
+                <div id="secaoVincularReceita" class="hidden mt-4 border-t border-slate-800 pt-4">
+                    <p class="text-xs text-slate-400 mb-2">Quer que o sistema reconheça futuras entradas automaticamente?</p>
+                    <button type="button" onclick="abrirBuscaTransacaoReceita()" id="btnVincularPadraoReceita"
+                        class="w-full bg-[#151e32] border border-slate-700 border-dashed hover:border-emerald-500 text-emerald-500 text-xs font-bold uppercase tracking-wider py-3 rounded-xl transition-colors flex items-center justify-center gap-2">
+                        <i class="bi bi-search"></i> Vincular Padrão de Entrada
+                    </button>
+                </div>
+            </div>
+
+            <div class="flex justify-between items-center pt-2">
+                {# Botão de excluir — visível apenas no modo edição #}
+                <button type="button" id="receitaBtnExcluir" onclick="excluirReceitaPlanejada()"
+                    class="hidden text-red-400 hover:text-red-300 text-xs font-bold flex items-center gap-1 transition-colors px-2 py-2 rounded-lg hover:bg-red-500/10">
+                    <i class="bi bi-trash3"></i> Excluir
+                </button>
+                <div class="flex-1"></div>
+                <button type="submit" id="receitaBtnSubmit"
+                    class="bg-gradient-to-r from-cyan-600 to-emerald-600 hover:from-cyan-500 hover:to-emerald-500 text-white font-bold px-6 py-3 rounded-xl shadow-[0_0_15px_rgba(8,145,178,0.3)] active:scale-[0.98] transition-all text-sm">
+                    CADASTRAR RECEITA
+                </button>
+            </div>
+        </form>
+
+        {# Form oculto de exclusão da receita #}
+        <form id="formExcluirReceita" method="POST" action="" class="hidden">
+            {% csrf_token %}
+            <input type="hidden" name="next" value="{{ redirect_next }}">
+        </form>
+
+        {# ── Histórico de lançamentos vinculados (modo edição) ── #}
+        <div id="secaoHistoricoReceita" class="hidden mt-8 border-t border-slate-800 pt-6">
+            <h3 class="text-sm font-bold text-slate-300 flex items-center gap-2 mb-4">
+                <i class="bi bi-clock-history text-emerald-400"></i> Histórico de Lançamentos
+            </h3>
+            <div class="bg-[#151e32] border border-slate-700/50 rounded-xl max-h-48 overflow-y-auto custom-scrollbar" id="historicoContainerReceita"></div>
+        </div>
+
+    </div>
+</div>
+
+{# ── Modal de busca de transações (compartilhado, reutiliza o mesmo do modais_despesa_fixa mas com ID distinto) ── #}
+<div id="modalBuscaTransacaoReceita" class="fixed inset-0 z-[70] hidden" aria-modal="true" role="dialog">
+    <div class="fixed inset-0 bg-black/80 backdrop-blur-sm" onclick="fecharBuscaTransacaoReceita()"></div>
+    <div class="fixed inset-x-0 top-16 mx-auto max-w-md bg-[#151e32] rounded-3xl shadow-2xl border border-slate-700 flex flex-col max-h-[75vh]">
+        <div class="p-5 border-b border-slate-700/50 flex items-center justify-between">
+            <div>
+                <h3 class="text-white font-bold tracking-wide">Selecionar Entrada Padrão</h3>
+                <p class="text-[10px] text-slate-500 mt-0.5">Busque um lançamento de receita nos últimos 60 dias</p>
+            </div>
+            <button type="button" onclick="fecharBuscaTransacaoReceita()" class="text-slate-400 hover:text-white transition-colors">
+                <i class="bi bi-x-lg text-lg"></i>
+            </button>
+        </div>
+        <div class="p-5 flex-1 overflow-hidden flex flex-col">
+            <input type="text" id="inputBuscaTransacaoReceita"
+                placeholder="Pesquise (ex: PIX recebido, Salário)..."
+                class="w-full bg-[#0f172a] text-sm text-white border border-slate-600 rounded-xl p-3 mb-4 focus:border-emerald-500 outline-none transition-colors">
+            <div id="listaTransacoesBuscaReceita" class="overflow-y-auto flex-1 space-y-2 pr-2 custom-scrollbar"></div>
+        </div>
+    </div>
+</div>
+
+<script>
+    window.HORIZON_CATEGORIAS_RECEITA_POR_MACRO = {{ categorias_receita_por_macro_json|default:"{}"|safe }};
+</script>
+<script src="{% static 'financeiro/js/receita_planejada_modal.js' %}"></script>

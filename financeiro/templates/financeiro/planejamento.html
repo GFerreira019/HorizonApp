@@ -1,0 +1,594 @@
+{% extends 'base.html' %}
+{% load humanize l10n %}
+
+{% block extra_head %}
+<style>
+    body { background-color: #0B1120 !important; }
+    .card-dark {
+        background-color: #151e32;
+        border: 1px solid #2a3449;
+    }
+    .bg-gradient-teal {
+        background: linear-gradient(135deg, #06b6d4, #0d9488);
+    }
+    .input-budget {
+        background-color: #0f172a;
+        border: 1px solid #334155;
+        border-radius: 0.75rem;
+        padding-top: 0.75rem;
+        padding-bottom: 0.75rem;
+        color: #fff;
+        font-weight: 700;
+        outline: none;
+        transition: border-color 0.2s;
+    }
+    .input-budget:focus {
+        border-color: #06b6d4;
+    }
+    .macro-row-clickable {
+        cursor: pointer;
+    }
+    .macro-row-clickable:hover {
+        border-color: rgba(34, 211, 238, 0.35);
+    }
+    .macro-toggle-locked {
+        position: relative;
+    }
+    .macro-toggle-locked .lock-overlay {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: rgba(11, 17, 32, 0.75);
+        border-radius: 1rem;
+        z-index: 2;
+        pointer-events: none;
+    }
+    /* Display somente-leitura para valores calculados automaticamente */
+    .value-display-readonly {
+        background-color: #0c1929;
+        border: 1px solid #0e7490;
+        border-radius: 0.75rem;
+        padding: 0.75rem;
+        display: flex;
+        align-items: center;
+        gap: 0.35rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<form method="POST" id="formPlanejamento">
+    {% csrf_token %}
+    
+    <header class="mb-6 mt-2 flex items-center justify-between">
+        <div class="flex items-center gap-3">
+            <div>
+                <h2 class="text-2xl font-bold text-white tracking-tight">Planejamento</h2>
+                <div class="flex items-center gap-1.5 mt-0.5">
+                    <div class="h-1.5 w-1.5 rounded-full bg-cyan-400 animate-pulse"></div>
+                    <span class="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Orçamento:</span>
+                    <span class="text-xs font-black text-cyan-400">{{ filtro_ativo }}</span>
+                </div>
+            </div>
+        </div>
+        
+        <button type="submit" class="px-4 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider bg-gradient-teal text-white shadow-lg shadow-cyan-500/20 active:scale-95 transition-transform">
+            <i class="bi bi-cloud-check text-sm mr-1"></i> Salvar
+        </button>
+    </header>
+
+    <!-- Navigation Tabs -->
+    <nav class="flex items-center gap-2 mb-6 border-b border-slate-800 pb-4">
+        <button type="button" onclick="switchMainTab('planejamento')" id="mainTab-planejamento" class="px-4 py-2.5 rounded-xl text-sm font-bold transition-all text-cyan-400 bg-cyan-500/10 border border-cyan-500/30">
+            📊 Planejamento de Orçamento
+        </button>
+        <button type="button" onclick="switchMainTab('guardiao')" id="mainTab-guardiao" class="px-4 py-2.5 rounded-xl text-sm font-bold transition-all text-slate-500 border border-transparent hover:text-slate-300">
+            🛡️ Guardião de Gastos
+        </button>
+    </nav>
+
+    <!-- Container Geral -->
+    <div id="conteudo-planejamento-geral">
+        <section class="grid grid-cols-1 gap-4 mb-6">
+            <div class="card-dark rounded-3xl p-5 shadow-lg relative overflow-hidden">
+            <div class="flex flex-col gap-2">
+                <div class="flex justify-between items-center">
+                    <label for="receita_esperada" class="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Receita Esperada (Mês)</label>
+                    <button type="button" onclick="openConfigModal()" class="h-8 w-8 rounded-lg bg-[#0f172a] border border-slate-700 flex items-center justify-center text-cyan-400 hover:text-white hover:bg-slate-700 transition-colors shadow-sm active:scale-95">
+                        <i class="bi bi-sliders"></i>
+                    </button>
+                </div>
+                <div class="relative flex items-center">
+                    <span class="absolute left-4 font-black text-slate-500 text-lg">R$</span>
+                    <input type="number" step="0.01" min="0" name="receita_esperada" id="receita_esperada"
+                        value="{{ planejamento.receita_esperada|unlocalize }}"
+                        class="w-full bg-[#0f172a] border border-slate-800 rounded-2xl py-4 pr-4 text-xl font-black text-emerald-400 outline-none focus:border-cyan-500 transition-colors"
+                        style="padding-left: 3.5rem;"
+                        {% if soma_receitas_planejadas %}readonly title="Soma automática das fontes de receita cadastradas"{% endif %}
+                        required>
+                </div>
+                {% if soma_receitas_planejadas %}
+                <span class="text-[9px] font-bold text-emerald-500/80 uppercase tracking-wider flex items-center gap-1 mt-0.5">
+                    <i class="bi bi-calculator"></i> Soma automática das fontes de receita
+                </span>
+                {% endif %}
+            </div>
+        </div>
+
+        <div id="cardRestante" class="card-dark rounded-3xl p-5 shadow-lg relative overflow-hidden transition-colors duration-300">
+            <p class="text-[10px] text-slate-400 font-bold uppercase tracking-widest mb-1">Saldo Restante a Alocar</p>
+            <h3 id="txtRestante" class="text-3xl font-black text-white tracking-tight">R$ 0,00</h3>
+            
+            <div class="w-full bg-slate-800 rounded-full h-2 mt-4 overflow-hidden">
+                <div id="barRestante" class="bg-cyan-500 h-full rounded-full transition-all duration-500" style="width: 0%"></div>
+            </div>
+        </div>
+    </section>
+
+    <main class="space-y-3 mb-6">
+        <h3 class="text-slate-400 font-bold mb-3 text-xs uppercase tracking-wider flex items-center gap-2">
+            <i class="bi bi-pie-chart text-cyan-400"></i> Distribuição do Orçamento
+        </h3>
+
+        {% for macro in macros_planejamento %}
+        <article id="row_macro_{{ macro.id }}"
+            class="macro-row macro-row-clickable card-dark p-4 rounded-2xl flex flex-col gap-4 transition-all duration-300"
+            data-macro-id="{{ macro.id }}"
+            data-macro-tipo="{{ macro.tipo }}"
+            data-macro-nome="{{ macro.nome }}"
+            role="button"
+            tabindex="0"
+            aria-label="Ver contas de {{ macro.nome }}"
+            onclick="handleMacroRowClick(event, {{ macro.id }})"
+            onkeydown="if(event.key==='Enter' && !event.target.closest('input')) { event.preventDefault(); abrirModalMacroProvisionamento({{ macro.id }}); }">
+            
+            <!-- Topo do Card -->
+            <div class="flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                    <div class="h-10 w-10 rounded-xl bg-[#0f172a] border border-slate-800 flex items-center justify-center text-lg shrink-0
+                        {% if macro.tipo == 'receita' %}text-emerald-400{% elif macro.tipo == 'reservado' %}text-amber-400{% else %}text-red-400{% endif %}">
+                        <i class="bi {{ macro.icone }}"></i>
+                    </div>
+                    <div>
+                        <h4 class="text-sm font-bold text-slate-200">{{ macro.nome }}</h4>
+                        <span class="text-[9px] uppercase font-black tracking-widest opacity-60 {% if macro.tipo == 'receita' %}text-emerald-500{% elif macro.tipo == 'reservado' %}text-amber-500{% else %}text-red-500{% endif %}">
+                            {% if macro.tipo == 'reservado' %}Reserva{% else %}{{ macro.tipo }}{% endif %}
+                        </span>
+                        
+                        {% if macro.tem_provisionamento %}
+                        <span class="text-[9px] font-bold text-cyan-500/80 mt-0.5 block">
+                            {{ macro.count_provisionamento }} 
+                            {% if macro.tipo == 'receita' %}
+                                receita{{ macro.count_provisionamento|pluralize:"s" }}
+                            {% elif macro.tipo == 'reservado' %}
+                                aporte{{ macro.count_provisionamento|pluralize:"s" }}
+                            {% else %}
+                                conta{{ macro.count_provisionamento|pluralize:"s" }}
+                            {% endif %}
+                        </span>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="h-8 w-8 rounded-lg bg-slate-800/50 flex items-center justify-center text-slate-400 transition-colors shrink-0">
+                    <i class="bi bi-gear-fill"></i>
+                </div>
+            </div>
+
+            <!-- Base do Card (Valores) -->
+            <div class="flex items-center gap-3">
+                {% if macro.tipo != 'receita' %}
+                <div class="shrink-0" onclick="event.stopPropagation()">
+                    <div class="value-display-readonly w-full justify-center whitespace-nowrap">
+                        <span class="font-black text-slate-300 text-sm" id="pct_macro_{{ macro.id }}">{{ macro.percentual_calculado|floatformat:1 }}</span>
+                        <span class="font-bold text-slate-500 text-xs">%</span>
+                    </div>
+                </div>
+                {% endif %}
+                <div class="shrink-0" onclick="event.stopPropagation()">
+                    {# Input oculto para o POST ainda funcionar com o valor calculado #}
+                    <input type="hidden" name="valor_macro_{{ macro.id }}" value="{{ macro.valor_planejado_calculado|unlocalize }}">
+                    <div class="value-display-readonly w-full justify-center whitespace-nowrap">
+                        <span class="font-bold text-slate-500 text-xs">R$</span>
+                        <span class="font-black text-white text-sm macro-valor-calculado" id="val_macro_{{ macro.id }}" data-macro-id="{{ macro.id }}" data-tipo="{{ macro.tipo }}" data-valor="{{ macro.valor_planejado_calculado|unlocalize }}">{{ macro.valor_planejado_calculado|floatformat:2 }}</span>
+                    </div>
+                </div>
+            </div>
+        </article>
+        {% endfor %}
+    </main>
+
+    <section class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-28 mt-6">
+        <a href="{% url 'controle_gastos_fixos' %}" class="card-dark p-4 rounded-2xl shadow-lg border border-slate-800 flex items-center justify-between group hover:border-cyan-500/50 transition-all h-full">
+            <div class="flex items-center gap-3">
+                <div class="h-10 w-10 rounded-xl bg-cyan-500/10 text-cyan-400 flex items-center justify-center">
+                    <i class="bi bi-calendar-check text-xl"></i>
+                </div>
+                <div>
+                    <h4 class="text-sm font-bold text-white">Custos Fixos do Mês</h4>
+                    <p class="text-[10px] text-gray-500">Ver o que falta pagar</p>
+                </div>
+            </div>
+            <div class="flex items-center gap-2">
+                <span class="text-[9px] bg-amber-500/20 text-amber-400 px-2 py-1 rounded-md font-bold uppercase tracking-wider">Acompanhar</span>
+                <i class="bi bi-chevron-right text-slate-600 group-hover:text-cyan-400 transition-colors"></i>
+            </div>
+        </a>
+
+        <div class="card-dark rounded-3xl p-5 shadow-lg h-full">
+            <h3 class="text-slate-300 font-bold mb-4 text-sm">Gestão de Contas (Provisionadas)</h3>
+            <div class="space-y-3">
+                <div class="flex items-center justify-between bg-[#111827] p-3 rounded-xl border border-slate-800">
+                    <div class="flex items-center gap-3">
+                        <div class="h-9 w-9 rounded-full bg-purple-500/20 text-purple-400 flex items-center justify-center"><i class="bi bi-bank2"></i></div>
+                        <div>
+                            <p class="text-sm text-white font-bold">Nubank</p>
+                            <p class="text-[10px] text-slate-400">R$ 3.300,00 Previsto</p>
+                        </div>
+                    </div>
+                    <div class="h-5 w-5 rounded border border-slate-600 flex items-center justify-center text-slate-600"></div>
+                </div>
+            </div>
+        </div>
+    </div> <!-- Fim Container Geral -->
+
+    <!-- Container Guardião de Gastos -->
+    <div id="conteudo-guardiao-gastos" class="hidden">
+        <div class="mb-6 flex flex-col md:flex-row md:items-center justify-between gap-4 bg-[#151e32] border border-slate-800 rounded-3xl p-6 shadow-lg">
+            <div>
+                <h3 class="text-white font-bold text-xl flex items-center gap-3 tracking-tight">
+                    <i class="bi bi-shield-check text-amber-400 text-2xl"></i> Guardião de Gastos Temporários
+                </h3>
+                <p class="text-xs text-slate-400 mt-1">Defina tetos de gasto com expiração automática para controlar seu orçamento.</p>
+                {% if limites_temporarios %}
+                <span class="inline-block mt-3 bg-amber-500/20 text-amber-400 text-[10px] font-black px-2.5 py-1 rounded-full uppercase tracking-wider">
+                    {{ limites_temporarios|length }} ativo{{ limites_temporarios|length|pluralize:"s" }}
+                </span>
+                {% endif %}
+            </div>
+            <button type="button" onclick="abrirModalLimiteTemporario()"
+                class="flex items-center gap-2 px-5 py-3 rounded-xl text-xs font-bold uppercase tracking-wider
+                       bg-amber-500 hover:bg-amber-400 text-[#0B1120] transition-all active:scale-95 shadow-[0_0_15px_rgba(245,158,11,0.2)]">
+                <i class="bi bi-plus-lg"></i> ⏱️ Definir Novo Limite
+            </button>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 {% if not limites_temporarios %}hidden{% endif %}" id="listLimitesAtivos">
+            {% for limite in limites_temporarios %}
+            <article id="cardLimite_{{ limite.pk }}"
+                     class="card-dark rounded-3xl p-5 border border-slate-800 transition-all duration-300 hover:border-amber-500/30 flex flex-col">
+                <div class="flex items-start justify-between gap-3 mb-4">
+                    <div class="flex items-center gap-3 flex-1 min-w-0">
+                        <div class="h-10 w-10 rounded-xl bg-amber-500/10 flex items-center justify-center shrink-0">
+                            <i class="bi bi-stopwatch text-amber-400 text-lg"></i>
+                        </div>
+                        <div class="flex-1 min-w-0">
+                            <div class="flex items-center gap-2">
+                                <p class="text-base font-black text-slate-200 truncate">
+                                    R$ {{ limite.valor_limite|floatformat:2 }}
+                                    {% if limite.categoria_alvo %}
+                                    <span class="text-slate-500 font-normal text-sm">→ {{ limite.categoria_alvo.nome }}</span>
+                                    {% else %}
+                                    <span class="text-slate-500 font-normal text-sm">→ Geral</span>
+                                    {% endif %}
+                                </p>
+                            </div>
+                            <p class="text-[10px] font-bold text-slate-500 mt-0.5 truncate uppercase tracking-widest" id="timerLimite_{{ limite.pk }}"
+                               data-fim="{{ limite.data_fim.isoformat }}">
+                                Expira: {{ limite.data_fim|date:"d/m H:i" }}
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mt-auto">
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="text-xs font-black {{ limite.cor_status_tailwind }}">
+                            {{ limite.percentual_consumido|floatformat:0 }}% consumido
+                        </span>
+                        {# Botão de cancelar limite — soft-delete via JS #}
+                        <button type="button"
+                            onclick="desativarLimite({{ limite.pk }})"
+                            class="h-7 w-7 rounded-lg bg-slate-800/60 text-slate-500 hover:text-red-400
+                                   hover:bg-red-500/10 flex items-center justify-center transition-colors"
+                            title="Cancelar este limite">
+                            <i class="bi bi-x-lg text-xs pointer-events-none"></i>
+                        </button>
+                    </div>
+
+                    {# Barra de progresso de consumo #}
+                    <div class="w-full bg-slate-800 rounded-full h-2 overflow-hidden shadow-inner">
+                        <div class="{{ limite.cor_barra_tailwind }} h-full rounded-full transition-all duration-500"
+                             style="width: {{ limite.percentual_consumido }}%;"></div>
+                    </div>
+
+                    {# Nota informativa: Open Finance ainda não integrado #}
+                    {% if limite.valor_consumido == 0 %}
+                    <p class="text-[10px] text-slate-600 mt-3 flex items-center gap-1.5 bg-[#0f172a] p-2 rounded-lg">
+                        <i class="bi bi-info-circle text-amber-500/50"></i>
+                        Consumo automático em breve via Open Finance.
+                    </p>
+                    {% endif %}
+                </div>
+            </article>
+            {% endfor %}
+        </div>
+
+        {# Estado vazio: convida o usuário a criar o primeiro limite #}
+        <button type="button" onclick="abrirModalLimiteTemporario()" id="empty-state-guardiao"
+            class="w-full card-dark rounded-3xl p-10 border-2 border-dashed border-slate-700
+                   hover:border-amber-500/40 transition-all group flex flex-col items-center
+                   justify-center gap-3 text-center active:scale-[0.99] bg-[#0f172a] {% if limites_temporarios %}hidden{% endif %}">
+            <div class="h-16 w-16 rounded-2xl bg-amber-500/5 group-hover:bg-amber-500/15
+                        flex items-center justify-center transition-colors">
+                <i class="bi bi-shield-check text-3xl text-amber-500/40 group-hover:text-amber-400 transition-colors"></i>
+            </div>
+            <div>
+                <p class="text-sm font-black text-slate-400 group-hover:text-slate-200 transition-colors">
+                    Nenhum Guardião Ativo
+                </p>
+                <p class="text-[10px] text-slate-500 mt-1 uppercase tracking-widest font-bold">
+                    Clique para definir um teto de gasto com prazo.
+                </p>
+            </div>
+        </button>
+    </div> <!-- Fim Container Guardião -->
+
+</form>
+<div id="configModal" class="fixed inset-0 z-[60] hidden flex items-center justify-center p-4">
+    <div class="absolute inset-0 bg-slate-950/90 backdrop-blur-sm transition-opacity" onclick="closeConfigModal()"></div>
+    
+    <div class="relative w-full max-w-sm bg-[#151e32] rounded-3xl shadow-2xl border border-slate-700 flex flex-col overflow-hidden transition-transform transform scale-95 opacity-0" id="configModalContent" style="max-height: 80vh;">
+        
+        <div class="p-4 border-b border-slate-800 flex justify-between items-center bg-[#0B1120]/50">
+            <div>
+                <h3 class="text-white font-bold tracking-wide text-sm">Configurar Orçamento</h3>
+                <p class="text-[9px] text-slate-400">Marque o que entra no cálculo este mês</p>
+            </div>
+            <button type="button" onclick="closeConfigModal()" class="h-7 w-7 rounded-full bg-slate-800 text-slate-400 hover:text-white flex items-center justify-center transition-colors">
+                <i class="bi bi-x-lg text-xs"></i>
+            </button>
+        </div>
+        
+        <div class="flex border-b border-slate-800/50 bg-[#0f172a]/40">
+            <button type="button" onclick="switchTab('receitas')" id="tab-receitas" class="flex-1 py-2.5 text-center text-[10px] font-bold uppercase tracking-wider text-cyan-400 border-b-2 border-cyan-400 transition-colors">Receitas</button>
+            <button type="button" onclick="switchTab('despesas')" id="tab-despesas" class="flex-1 py-2.5 text-center text-[10px] font-bold uppercase tracking-wider text-slate-500 border-b-2 border-transparent transition-colors">Despesas</button>
+            <button type="button" onclick="switchTab('reservas')" id="tab-reservas" class="flex-1 py-2.5 text-center text-[10px] font-bold uppercase tracking-wider text-slate-500 border-b-2 border-transparent transition-colors">Reservas</button>
+        </div>
+        
+        <div class="p-4 overflow-y-auto custom-scrollbar flex-1 bg-[#0B1120]/50">
+            <div id="grid-receitas" class="grid grid-cols-3 gap-2">
+                {% for macro in macros_planejamento %}
+                    {% if macro.tipo == 'receita' %}
+                    <div class="macro-toggle aspect-square flex flex-col items-center justify-center border-2 border-cyan-500 bg-cyan-500/10 p-2 rounded-2xl cursor-pointer transition-all active:scale-95 text-center {% if not macro.pode_remover_escopo %}macro-toggle-locked{% endif %}"
+                        data-id="{{ macro.id }}"
+                        data-pode-remover="{{ macro.pode_remover_escopo|yesno:'true,false' }}"
+                        data-count-fixos="{{ macro.count_fixos }}"
+                        onclick="toggleMacro(this)">
+                        {% if not macro.pode_remover_escopo %}<div class="lock-overlay" title="Exclua {{ macro.count_fixos }} conta(s) fixa(s) antes de remover do orçamento"><i class="bi bi-lock-fill text-amber-400 text-lg"></i></div>{% endif %}
+                        <i class="bi {{ macro.icone }} text-cyan-400 text-xl mb-1 transition-all"></i>
+                        <h4 class="text-[9px] font-bold text-white leading-tight px-1">{{ macro.nome }}</h4>
+                    </div>
+                    {% endif %}
+                {% endfor %}
+            </div>
+
+            <div id="grid-despesas" class="grid grid-cols-3 gap-2 hidden">
+                {% for macro in macros_planejamento %}
+                    {% if macro.tipo == 'despesa' %}
+                    <div class="macro-toggle aspect-square flex flex-col items-center justify-center border-2 border-cyan-500 bg-cyan-500/10 p-2 rounded-2xl cursor-pointer transition-all active:scale-95 text-center {% if not macro.pode_remover_escopo %}macro-toggle-locked{% endif %}"
+                        data-id="{{ macro.id }}"
+                        data-pode-remover="{{ macro.pode_remover_escopo|yesno:'true,false' }}"
+                        data-count-fixos="{{ macro.count_fixos }}"
+                        onclick="toggleMacro(this)">
+                        {% if not macro.pode_remover_escopo %}<div class="lock-overlay" title="Exclua {{ macro.count_fixos }} conta(s) fixa(s) antes de remover do orçamento"><i class="bi bi-lock-fill text-amber-400 text-lg"></i></div>{% endif %}
+                        <i class="bi {{ macro.icone }} text-red-400 text-xl mb-1 transition-all"></i>
+                        <h4 class="text-[9px] font-bold text-slate-200 leading-tight px-1">{{ macro.nome }}</h4>
+                    </div>
+                    {% endif %}
+                {% endfor %}
+            </div>
+
+            <div id="grid-reservas" class="grid grid-cols-3 gap-2 hidden">
+                {% for macro in macros_planejamento %}
+                    {% if macro.tipo == 'reservado' %}
+                    <div class="macro-toggle aspect-square flex flex-col items-center justify-center border-2 border-cyan-500 bg-cyan-500/10 p-2 rounded-2xl cursor-pointer transition-all active:scale-95 text-center {% if not macro.pode_remover_escopo %}macro-toggle-locked{% endif %}"
+                        data-id="{{ macro.id }}"
+                        data-pode-remover="{{ macro.pode_remover_escopo|yesno:'true,false' }}"
+                        data-count-fixos="{{ macro.count_fixos }}"
+                        onclick="toggleMacro(this)">
+                        {% if not macro.pode_remover_escopo %}<div class="lock-overlay" title="Exclua {{ macro.count_fixos }} conta(s) fixa(s) antes de remover do orçamento"><i class="bi bi-lock-fill text-amber-400 text-lg"></i></div>{% endif %}
+                        <i class="bi {{ macro.icone }} text-amber-400 text-xl mb-1 transition-all"></i>
+                        <h4 class="text-[9px] font-bold text-slate-200 leading-tight px-1">{{ macro.nome }}</h4>
+                    </div>
+                    {% endif %}
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+
+{% with redirect_next=planejamento_next %}
+{% include 'financeiro/partials/modais_despesa_fixa.html' %}
+{% include 'financeiro/partials/modal_macro_provisionamento.html' %}
+{% include 'financeiro/partials/modal_nova_receita_planejada.html' %}
+{% include 'financeiro/partials/modal_limite_temporario.html' %}
+{% endwith %}
+
+<div id="toastEscopo" class="fixed top-4 left-1/2 -translate-x-1/2 z-[80] hidden px-4 py-3 rounded-xl bg-amber-500/20 border border-amber-500/40 text-amber-200 text-xs font-bold shadow-lg max-w-sm text-center"></div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    window.handleMacroRowClick = function(event, macroId) {
+        if (event.target.closest('input, button, a, select, textarea')) {
+            return;
+        }
+        if (typeof abrirModalMacroProvisionamento === 'function') {
+            abrirModalMacroProvisionamento(macroId);
+        }
+    };
+
+    window.switchMainTab = function(tabName) {
+        const btnPlan = document.getElementById('mainTab-planejamento');
+        const btnGuard = document.getElementById('mainTab-guardiao');
+        const contPlan = document.getElementById('conteudo-planejamento-geral');
+        const contGuard = document.getElementById('conteudo-guardiao-gastos');
+
+        if (tabName === 'planejamento') {
+            contPlan.classList.remove('hidden');
+            contGuard.classList.add('hidden');
+            btnPlan.className = "px-4 py-2.5 rounded-xl text-sm font-bold transition-all text-cyan-400 bg-cyan-500/10 border border-cyan-500/30";
+            btnGuard.className = "px-4 py-2.5 rounded-xl text-sm font-bold transition-all text-slate-500 border border-transparent hover:text-slate-300";
+        } else {
+            contPlan.classList.add('hidden');
+            contGuard.classList.remove('hidden');
+            btnGuard.className = "px-4 py-2.5 rounded-xl text-sm font-bold transition-all text-amber-400 bg-amber-500/10 border border-amber-500/30";
+            btnPlan.className = "px-4 py-2.5 rounded-xl text-sm font-bold transition-all text-slate-500 border border-transparent hover:text-slate-300";
+        }
+    };
+
+    document.addEventListener("DOMContentLoaded", function() {
+        const inputReceita = document.getElementById("receita_esperada");
+        const txtRestante = document.getElementById("txtRestante");
+        const barRestante = document.getElementById("barRestante");
+        const cardRestante = document.getElementById("cardRestante");
+
+        // -----------------------------------------------------------------------
+        // Exibição do "Saldo Restante a Alocar" calculada a partir dos dados
+        // já computados pelo backend — sem recalcular bidirecional dos inputs.
+        // -----------------------------------------------------------------------
+        function atualizarCardRestante() {
+            const masterReceita = parseFloat(inputReceita.value) || 0;
+            let totalAlocado = 0;
+
+            // Soma os valores dos displays somente-leitura (calculados pelo backend/modal)
+            document.querySelectorAll(".macro-valor-calculado").forEach(function(span) {
+                const macroId = span.getAttribute("data-macro-id");
+                const tipo = span.getAttribute("data-tipo");
+                const row = document.getElementById("row_macro_" + macroId);
+                if (row && row.classList.contains("hidden")) return;
+                
+                const valor = parseFloat(span.getAttribute("data-valor")) || 0;
+                if (tipo !== 'receita') {
+                    totalAlocado += valor;
+                }
+
+                // Atualiza o percentual exibido dinamicamente se masterReceita > 0
+                const pctSpan = document.getElementById("pct_macro_" + macroId);
+                if (pctSpan) {
+                    if (masterReceita > 0) {
+                        const pct = (valor / masterReceita) * 100;
+                        pctSpan.innerText = pct.toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+                    } else {
+                        pctSpan.innerText = "0,0";
+                    }
+                }
+            });
+
+            const restante = masterReceita - totalAlocado;
+            txtRestante.innerText = "R$ " + restante.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+            if (restante < 0) {
+                cardRestante.style.borderColor = "#ef4444";
+                txtRestante.className = "text-3xl font-black text-red-400 tracking-tight";
+                barRestante.className = "bg-red-500 h-full rounded-full shadow-[0_0_10px_#ef4444]";
+                barRestante.style.width = "100%";
+            } else if (restante === 0 && masterReceita > 0) {
+                cardRestante.style.borderColor = "#10b981";
+                txtRestante.className = "text-3xl font-black text-emerald-400 tracking-tight";
+                barRestante.className = "bg-emerald-500 h-full rounded-full shadow-[0_0_10px_#10b981]";
+                barRestante.style.width = "100%";
+            } else {
+                cardRestante.style.borderColor = "#2a3449";
+                txtRestante.className = "text-3xl font-black text-white tracking-tight";
+                barRestante.className = "bg-cyan-500 h-full rounded-full shadow-[0_0_10px_rgba(34,211,238,0.5)]";
+                const pctProgresso = masterReceita > 0 ? Math.min((totalAlocado / masterReceita) * 100, 100) : 0;
+                barRestante.style.width = pctProgresso + "%";
+            }
+        }
+
+        inputReceita.addEventListener("input", atualizarCardRestante);
+
+        // -----------------------------------------------------------------------
+        // Modal de configuração de escopo
+        // -----------------------------------------------------------------------
+        window.openConfigModal = function() {
+            const modal = document.getElementById("configModal");
+            const content = document.getElementById("configModalContent");
+            modal.classList.remove("hidden");
+            setTimeout(function() {
+                content.classList.remove("scale-95", "opacity-0");
+                content.classList.add("scale-100", "opacity-100");
+            }, 10);
+        };
+
+        window.closeConfigModal = function() {
+            const modal = document.getElementById("configModal");
+            const content = document.getElementById("configModalContent");
+            content.classList.remove("scale-100", "opacity-100");
+            content.classList.add("scale-95", "opacity-0");
+            setTimeout(function() { modal.classList.add("hidden"); }, 200);
+        };
+
+        window.mostrarToastEscopo = function(mensagem) {
+            const toast = document.getElementById("toastEscopo");
+            if (!toast) return;
+            toast.innerText = mensagem;
+            toast.classList.remove("hidden");
+            setTimeout(function() { toast.classList.add("hidden"); }, 4000);
+        };
+
+        window.switchTab = function(tabName) {
+            ['receitas', 'despesas', 'reservas'].forEach(function(name) {
+                const tab = document.getElementById("tab-" + name);
+                if (tab) tab.className = "flex-1 py-2.5 text-[10px] text-center font-bold uppercase tracking-wider text-slate-500 border-b-2 border-transparent transition-colors";
+                const grid = document.getElementById("grid-" + name);
+                if (grid) grid.classList.add("hidden");
+            });
+            const activeColor = tabName === 'receitas' ? 'text-cyan-400 border-cyan-400'
+                : (tabName === 'despesas' ? 'text-red-400 border-red-400' : 'text-amber-400 border-amber-400');
+            const targetTab = document.getElementById("tab-" + tabName);
+            if (targetTab) targetTab.className = "flex-1 py-2.5 text-[10px] text-center font-bold uppercase tracking-wider " + activeColor + " border-b-2 transition-colors";
+            const targetGrid = document.getElementById("grid-" + tabName);
+            if (targetGrid) targetGrid.classList.remove("hidden");
+        };
+
+        window.toggleMacro = function(element) {
+            const id = element.getAttribute("data-id");
+            const row = document.getElementById("row_macro_" + id);
+            const iconEl = Array.from(element.querySelectorAll('i')).find(function(i) { return !i.classList.contains('bi-lock-fill'); });
+            const isAtivo = element.classList.contains("border-cyan-500") || element.classList.contains("border-red-500") || element.classList.contains("border-amber-500");
+            const podeRemover = element.getAttribute("data-pode-remover") !== "false";
+
+            if (isAtivo && !podeRemover) {
+                const count = element.getAttribute("data-count-fixos") || "0";
+                mostrarToastEscopo("Remova as " + count + " conta(s) fixa(s) vinculada(s) antes de tirar esta categoria do orçamento.");
+                return;
+            }
+
+            if (isAtivo) {
+                const lockedClass = !podeRemover ? " macro-toggle-locked" : "";
+                element.className = "macro-toggle aspect-square flex flex-col items-center justify-center border-2 border-slate-700 bg-[#0f172a] opacity-50 p-2 rounded-2xl cursor-pointer transition-all active:scale-95 text-center" + lockedClass;
+                if (iconEl) iconEl.classList.add("grayscale", "opacity-50");
+                if (row) row.classList.add("hidden");
+            } else {
+                const gridId = element.parentElement.id;
+                let corBorda = "border-cyan-500"; let corFundo = "bg-cyan-500/10";
+                if (gridId === "grid-despesas") { corBorda = "border-red-500"; corFundo = "bg-red-500/10"; }
+                if (gridId === "grid-reservas") { corBorda = "border-amber-500"; corFundo = "bg-amber-500/10"; }
+                const lockedClass = !podeRemover ? " macro-toggle-locked" : "";
+                element.className = "macro-toggle aspect-square flex flex-col items-center justify-center border-2 " + corBorda + " " + corFundo + " p-2 rounded-2xl cursor-pointer transition-all active:scale-95 text-center" + lockedClass;
+                if (iconEl) iconEl.classList.remove("grayscale", "opacity-50");
+                if (row) row.classList.remove("hidden");
+            }
+            atualizarCardRestante();
+        };
+
+        // Inicialização: macros com valor zero (sem provisionamento e sem orçamento salvo)
+        // são mantidas visíveis — a lógica de ocultação agora é responsabilidade do backend/template
+        atualizarCardRestante();
+    });
+</script>
+{% endblock %}

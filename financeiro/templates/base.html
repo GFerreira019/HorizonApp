@@ -5,11 +5,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="description" content="HorizonAPP - Previsibilidade e Fluxo de Caixa">
-    <title>{% block title %}HorizonAPP{% endblock %}</title>
+    <title>{% block title %}HorizonAPP{% endblock %}</title>
     
     <link rel="icon" href="{% static 'img/icon.png' %}" type="image/png">
 
-    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
     <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
 
@@ -128,7 +128,7 @@
                         <p class="opacity-90 leading-tight">{{ message }}</p>
                     </div>
                     
-                    <button type="button" class="ml-auto -mx-1.5 -my-1.5 p-1.5 text-slate-400 hover:text-white rounded-lg focus:ring-2 focus:ring-slate-400 p-1 hover:bg-slate-800/50 inline-flex h-8 w-8 transition-colors" onclick="this.parentElement.remove();" aria-label="Fechar">
+                    <button type="button" class="ml-auto -mx-1.5 -my-1.5 p-1.5 text-slate-400 hover:text-white rounded-lg focus:ring-2 focus:ring-slate-400 hover:bg-slate-800/50 inline-flex h-8 w-8 transition-colors" onclick="this.parentElement.remove();" aria-label="Fechar">
                         <span class="sr-only">Fechar</span>
                         <i class="bi bi-x-lg"></i>
                     </button>
@@ -137,7 +137,6 @@
         </div>
         
         <script>
-            // Remove os toasts automaticamente após 5 segundos
             setTimeout(() => {
                 const toasts = document.querySelectorAll('#toast-container > div');
                 toasts.forEach(toast => {
@@ -154,9 +153,70 @@
             <p class="text-xs text-slate-400 font-medium tracking-wide">Olá, {{ user.first_name|default:user.username }}</p>
         </div>
         
-        <div class="h-10 w-10 rounded-full bg-gradient-to-tr from-indigo-600 to-violet-500 flex items-center justify-center text-white font-bold text-sm shadow-md ring-2 ring-slate-900 shadow-indigo-500/20">
-            {{ user.username|slice:":1"|upper }}
+        {# ── Avatar interativo com dropdown ── #}
+        <div class="relative" id="user-menu-wrapper">
+            <button
+                id="user-menu-button"
+                aria-expanded="false"
+                aria-haspopup="true"
+                aria-controls="user-dropdown-menu"
+                class="h-10 w-10 rounded-full bg-gradient-to-tr from-indigo-600 to-violet-500
+                       flex items-center justify-center text-white font-bold text-sm
+                       shadow-md ring-2 ring-slate-900 shadow-indigo-500/20
+                       hover:ring-indigo-500/50 hover:shadow-indigo-500/40
+                       transition-all duration-200 cursor-pointer select-none overflow-hidden"
+            >
+                {% if request.user.perfil.foto_perfil %}
+                    <img src="{{ request.user.perfil.foto_perfil.url }}" class="h-10 w-10 rounded-full object-cover" alt="Avatar">
+                {% else %}
+                    {{ user.username|slice:":1"|upper }}
+                {% endif %}
+            </button>
+
+            {# Dropdown — nasce oculto, aberto via JS #}
+            <div
+                id="user-dropdown-menu"
+                role="menu"
+                aria-labelledby="user-menu-button"
+                class="hidden absolute right-0 mt-2 w-52 z-50
+                       bg-[#151e32] border border-slate-700/50
+                       rounded-xl shadow-xl shadow-black/40
+                       overflow-hidden
+                       animate-[fadeInDown_0.15s_ease_forwards]"
+            >
+                {# Cabeçalho do menu #}
+                <div class="px-4 py-3 border-b border-slate-800">
+                    <p class="text-xs font-bold text-white truncate">{{ user.get_full_name|default:user.username }}</p>
+                    <p class="text-[10px] text-slate-500 truncate mt-0.5">{{ user.email }}</p>
+                </div>
+
+                {# Itens do menu #}
+                <div class="py-1">
+                    <a href="{% url 'tela_configuracoes' %}"
+                       role="menuitem"
+                       class="flex items-center gap-3 px-4 py-2.5 text-sm text-slate-300
+                              hover:bg-slate-800/60 hover:text-white transition-colors">
+                        <i class="bi bi-gear text-slate-500 text-base"></i>
+                        Configurações
+                    </a>
+
+                    {# Logout via POST — compatível com Django 5+ e django-allauth #}
+                    <form id="logout-form" method="POST" action="{% url 'account_logout' %}" class="m-0">
+                        {% csrf_token %}
+                        <button
+                            type="submit"
+                            role="menuitem"
+                            class="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-left
+                                   text-red-400 hover:bg-red-500/10 hover:text-red-300
+                                   transition-colors">
+                            <i class="bi bi-box-arrow-right text-base"></i>
+                            Sair da Conta
+                        </button>
+                    </form>
+                </div>
+            </div>
         </div>
+
     </header>
 
     <main class="container mx-auto p-4 max-w-3xl w-full">
@@ -166,6 +226,8 @@
 
     {% block fab %}
     {% endblock %}
+
+    {% include 'financeiro/partials/bottom_nav.html' %}
 
     <script>
         // Inicialização do Select2 para todos os elementos com a classe .select2-apply
@@ -181,5 +243,45 @@
     
     {% block scripts %}
     {% endblock %}
+
+    <script>
+        // ── User Dropdown Menu ──────────────────────────────────────────────
+        // IIFE: isola o escopo para não poluir variáveis globais de outras páginas
+        (function () {
+            'use strict';
+            const btn     = document.getElementById('user-menu-button');
+            const menu    = document.getElementById('user-dropdown-menu');
+            const wrapper = document.getElementById('user-menu-wrapper');
+
+            if (!btn || !menu || !wrapper) return;
+
+            function openMenu() {
+                menu.classList.remove('hidden');
+                btn.setAttribute('aria-expanded', 'true');
+            }
+
+            function closeMenu() {
+                menu.classList.add('hidden');
+                btn.setAttribute('aria-expanded', 'false');
+            }
+
+            // Toggle ao clicar no avatar
+            btn.addEventListener('click', function (e) {
+                e.stopPropagation(); // evita que o listener do document feche imediatamente
+                const isOpen = btn.getAttribute('aria-expanded') === 'true';
+                isOpen ? closeMenu() : openMenu();
+            });
+
+            // Fecha ao pressionar Escape
+            document.addEventListener('keydown', function (e) {
+                if (e.key === 'Escape') closeMenu();
+            });
+
+            // Fecha ao clicar fora do wrapper (avatar + menu)
+            document.addEventListener('click', function (e) {
+                if (!wrapper.contains(e.target)) closeMenu();
+            });
+        }());
+    </script>
 </body>
-</html>
+</html>

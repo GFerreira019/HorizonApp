@@ -1,0 +1,343 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<header class="mb-6 mt-2">
+    <h1 class="text-2xl font-bold text-white tracking-tight flex items-center gap-3">
+        <span class="h-10 w-10 rounded-xl bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center">
+            <i class="bi bi-bank text-cyan-400 text-lg"></i>
+        </span>
+        Conexões Bancárias
+    </h1>
+    <p class="text-xs text-slate-400 mt-1.5 font-medium tracking-wide ml-[52px]">
+        Conecte suas contas via Open Finance para importação automática de transações.
+    </p>
+</header>
+
+{# ─── Banner informativo ─────────────────────────────────────────────────── #}
+<div class="bg-cyan-500/5 border border-cyan-500/20 rounded-2xl p-4 mb-6 flex items-start gap-3">
+    <i class="bi bi-shield-lock-fill text-cyan-400 text-lg mt-0.5 shrink-0"></i>
+    <div>
+        <p class="text-sm text-cyan-300 font-semibold">Seus dados são protegidos pelo Open Finance Brasil</p>
+        <p class="text-xs text-slate-400 mt-0.5 leading-relaxed">
+            Nenhuma senha bancária é armazenada. A conexão usa tokens seguros via 
+            <strong class="text-slate-300">Pluggy</strong>, regulamentado pelo Banco Central.
+            Você pode revogar o acesso a qualquer momento.
+        </p>
+    </div>
+</div>
+
+{# ─── Botão Conectar Banco ─────────────────────────────────────────────── #}
+<div class="mb-8">
+    <button
+        id="btn-conectar-banco"
+        type="button"
+        class="group relative w-full flex items-center justify-center gap-3 
+               bg-gradient-to-r from-cyan-600 to-cyan-500 
+               hover:from-cyan-500 hover:to-cyan-400
+               text-white font-bold py-4 rounded-2xl text-sm uppercase tracking-widest
+               shadow-[0_4px_24px_rgba(6,182,212,0.35)] hover:shadow-[0_4px_32px_rgba(6,182,212,0.55)]
+               active:scale-[0.98] transition-all duration-200">
+        <i class="bi bi-plus-lg text-lg group-hover:rotate-90 transition-transform duration-200"></i>
+        Conectar Instituição Financeira
+    </button>
+</div>
+
+{# ─── Lista de Conexões Ativas ─────────────────────────────────────────── #}
+<section class="mb-28">
+    <h2 class="text-[10px] text-slate-500 font-bold uppercase tracking-widest mb-4 flex items-center gap-2">
+        <i class="bi bi-link-45deg text-slate-600"></i>
+        Contas Conectadas ({{ conexoes.count }})
+    </h2>
+
+    <div class="space-y-3" id="lista-conexoes">
+        {% for conexao in conexoes %}
+        <article
+            id="conexao-card-{{ conexao.pk }}"
+            class="bg-[#151e32] border border-slate-800 rounded-2xl p-4 
+                   flex items-center justify-between gap-4 
+                   hover:border-slate-600 transition-colors group">
+
+            {# Ícone + Dados #}
+            <div class="flex items-center gap-4 min-w-0">
+                <div class="h-12 w-12 shrink-0 rounded-xl bg-slate-800/80 border border-slate-700 
+                            flex items-center justify-center text-slate-300 text-xl shadow-sm">
+                    <i class="bi bi-bank2"></i>
+                </div>
+                <div class="min-w-0">
+                    <h3 class="text-sm font-bold text-slate-100 truncate">{{ conexao.instituicao_nome }}</h3>
+                    <div class="flex items-center gap-2 mt-0.5">
+                        <span class="text-[10px] font-bold uppercase tracking-widest {{ conexao.cor_status_tailwind }}">
+                            <i class="bi {{ conexao.icone_status_bootstrap }}"></i>
+                            {{ conexao.get_status_display }}
+                        </span>
+                        <span class="text-[10px] text-slate-600">•</span>
+                        <span class="text-[10px] text-slate-500">
+                            Atualizado {{ conexao.atualizado_em|date:"d/m/Y H:i" }}
+                        </span>
+                    </div>
+                    <p class="text-[10px] text-slate-600 mt-0.5 font-mono truncate">
+                        ID: {{ conexao.item_id_externo }}
+                    </p>
+                </div>
+            </div>
+
+            {# Ações #}
+            <div class="flex items-center gap-2 shrink-0">
+                {# Botão Sincronizar #}
+                <button
+                    type="button"
+                    data-conexao-id="{{ conexao.pk }}"
+                    data-url="{% url 'sincronizar_conexao_ajax' conexao.pk %}"
+                    class="btn-sincronizar h-9 px-3 rounded-xl bg-cyan-500/10 text-cyan-400 text-xs font-bold
+                           flex items-center gap-1.5 border border-cyan-500/20 
+                           hover:bg-cyan-500/20 hover:border-cyan-500/40 
+                           transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                    title="Sincronizar transações agora">
+                    <i class="bi bi-arrow-repeat btn-sync-icon"></i>
+                    <span class="btn-sync-text hidden sm:inline">Sincronizar</span>
+                </button>
+
+                {# Badge de transações sincronizadas #}
+                <span class="text-[10px] font-bold text-slate-400 bg-slate-800 px-2.5 py-1.5 
+                             rounded-lg border border-slate-700 tracking-wide uppercase whitespace-nowrap">
+                    {{ conexao.transacoes_sincronizadas.count }} tx
+                </span>
+            </div>
+        </article>
+        {% empty %}
+        {# Estado vazio #}
+        <div class="text-center py-14 border border-dashed border-slate-800 rounded-2xl bg-[#0f172a]/50">
+            <div class="h-16 w-16 mx-auto rounded-2xl bg-slate-800/80 border border-slate-700 
+                        flex items-center justify-center mb-4">
+                <i class="bi bi-bank text-slate-600 text-3xl"></i>
+            </div>
+            <p class="text-sm font-bold text-slate-300">Nenhuma conta conectada</p>
+            <p class="text-xs text-slate-500 mt-1">
+                Clique em "Conectar Instituição Financeira" para começar.
+            </p>
+        </div>
+        {% endfor %}
+    </div>
+</section>
+
+{# ─── Toast de feedback ──────────────────────────────────────────────────── #}
+<div id="toast-of"
+     class="fixed bottom-24 left-1/2 -translate-x-1/2 z-50 
+            bg-[#151e32] border border-slate-700 text-sm text-slate-200 font-medium
+            px-5 py-3 rounded-2xl shadow-2xl flex items-center gap-2.5
+            transition-all duration-300 opacity-0 pointer-events-none scale-95">
+    <i id="toast-of-icon" class="bi bi-check-circle-fill text-emerald-400"></i>
+    <span id="toast-of-msg">Operação concluída.</span>
+</div>
+
+{% endblock %}
+
+
+{% block scripts %}
+{# ─── Pluggy Connect Widget ──────────────────────────────────────────────── #}
+{#
+  COMO CONFIGURAR:
+  1. Acesse o Pluggy Dashboard (https://dashboard.pluggy.ai) e crie um Connect Token.
+  2. No seu backend (view ou API), gere um connectToken curto-prazo via:
+       POST https://api.pluggy.ai/connect_token
+       Body: { "clientId": PLUGGY_CLIENT_ID, "clientSecret": PLUGGY_CLIENT_SECRET }
+  3. Substitua o placeholder abaixo pelo token gerado dinamicamente ou exponha
+     um endpoint Django `/api/open-finance/connect-token/` que retorna o token.
+  
+  SEGURANÇA: Nunca exponha o PLUGGY_CLIENT_SECRET no frontend.
+             Apenas o connectToken (curto prazo, 30min) vai para o JS.
+#}
+
+{# Carrega o SDK do Pluggy Connect de forma assíncrona #}
+<script src="https://cdn.pluggy.ai/pluggy-connect/v2.1.1/pluggy-connect.js" defer></script>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    'use strict';
+
+    // ── Utilitário: Toast ──────────────────────────────────────────────────
+    const toast = document.getElementById('toast-of');
+    const toastMsg = document.getElementById('toast-of-msg');
+    const toastIcon = document.getElementById('toast-of-icon');
+
+    /**
+     * Exibe o toast de feedback por 3 segundos.
+     * @param {string} msg  - Mensagem a exibir.
+     * @param {'success'|'error'|'info'} tipo - Define a cor do ícone.
+     */
+    function showToast(msg, tipo = 'success') {
+        const icons = {
+            success: 'bi-check-circle-fill text-emerald-400',
+            error:   'bi-x-circle-fill text-red-400',
+            info:    'bi-info-circle-fill text-cyan-400',
+        };
+        toastIcon.className = `bi ${icons[tipo] || icons.success}`;
+        toastMsg.textContent = msg;
+        toast.classList.remove('opacity-0', 'pointer-events-none', 'scale-95');
+        toast.classList.add('opacity-100', 'scale-100');
+        setTimeout(() => {
+            toast.classList.remove('opacity-100', 'scale-100');
+            toast.classList.add('opacity-0', 'pointer-events-none', 'scale-95');
+        }, 4000);
+    }
+
+    // ── CSRF helper (padrão do projeto) ───────────────────────────────────
+    function getCookie(name) {
+        let v = null;
+        document.cookie.split(';').forEach(c => {
+            const t = c.trim();
+            if (t.startsWith(name + '=')) v = decodeURIComponent(t.slice(name.length + 1));
+        });
+        return v;
+    }
+
+    // ── Salvar conexão após consentimento ──────────────────────────────────
+    /**
+     * Envia o itemId gerado pelo Pluggy Connect para o backend Django.
+     * Chamado no callback `onSuccess` do widget.
+     *
+     * @param {string} itemId           - Item ID retornado pelo Pluggy.
+     * @param {string} instituicaoNome  - Nome da instituição (ex: "Nubank").
+     */
+    async function salvarConexao(itemId, instituicaoNome) {
+        const url = "{% url 'salvar_conexao_bancaria_ajax' %}";
+        try {
+            const resp = await fetch(url, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCookie('csrftoken'),
+                },
+                body: JSON.stringify({ item_id: itemId, instituicao_nome: instituicaoNome }),
+            });
+            const data = await resp.json();
+
+            if (data.status === 'created') {
+                showToast(`✅ ${data.instituicao_nome} conectado com sucesso!`, 'success');
+                // Recarrega a página para exibir a nova conexão na lista.
+                setTimeout(() => location.reload(), 1500);
+            } else if (data.status === 'exists') {
+                showToast('Conexão já existe. Dados atualizados.', 'info');
+            } else {
+                showToast(`Erro: ${data.mensagem}`, 'error');
+            }
+        } catch (err) {
+            console.error('[HorizonAPP] Erro ao salvar conexão:', err);
+            showToast('Falha na comunicação com o servidor.', 'error');
+        }
+    }
+
+    // ── Inicializar Pluggy Connect Widget ──────────────────────────────────
+    /**
+     * Inicializa o widget Pluggy Connect.
+     *
+     * IMPORTANTE: O `connectToken` deve ser gerado dinamicamente pelo backend
+     * (curto prazo, ~30min). Para o MVP, crie um endpoint Django que retorne:
+     *   POST /api/open-finance/connect-token/ → { "access_token": "..." }
+     *
+     * Para testes, gere manualmente no Pluggy Sandbox:
+     *   https://dashboard.pluggy.ai → Sandbox → Connect Token
+     */
+    async function abrirWidget() {
+        const btnConectar = document.getElementById('btn-conectar-banco');
+
+        // Passo 1: Solicitar um connectToken efêmero ao backend.
+        // TODO: Implementar o endpoint /api/open-finance/connect-token/ quando disponível.
+        // Por ora, usa um placeholder para demonstrar o fluxo.
+        let connectToken = '';
+
+        try {
+            // Descomentar quando o endpoint estiver pronto:
+            // const resp = await fetch('/api/open-finance/connect-token/', {
+            //     method: 'POST',
+            //     headers: { 'X-CSRFToken': getCookie('csrftoken') },
+            // });
+            // const data = await resp.json();
+            // connectToken = data.access_token;
+
+            // ── PLACEHOLDER MVP ──────────────────────────────────────────
+            // Substitua pela linha acima quando o endpoint estiver pronto.
+            // Para testes no Sandbox Pluggy, cole o token gerado manualmente:
+            connectToken = 'SEU_CONNECT_TOKEN_AQUI'; // ← substituir
+            // ─────────────────────────────────────────────────────────────
+
+            if (!connectToken || connectToken === 'SEU_CONNECT_TOKEN_AQUI') {
+                showToast('⚠️ Configure o Connect Token para ativar a conexão.', 'error');
+                return;
+            }
+
+        } catch (err) {
+            showToast('Não foi possível iniciar o widget.', 'error');
+            return;
+        }
+
+        // Passo 2: Inicializar o widget com callbacks.
+        // Documentação: https://docs.pluggy.ai/docs/pluggy-connect
+        PluggyConnect.init({
+            connectToken: connectToken,
+
+            // Chamado quando o usuário autoriza com sucesso.
+            onSuccess: function (itemData) {
+                const itemId = itemData.item.id;
+                const nomeInst = itemData.item.connector?.name || 'Banco Desconhecido';
+                salvarConexao(itemId, nomeInst);
+            },
+
+            // Chamado quando o usuário fecha o widget sem conectar.
+            onClose: function () {
+                showToast('Conexão cancelada.', 'info');
+            },
+
+            // Chamado em erros críticos do widget.
+            onError: function (err) {
+                console.error('[Pluggy Connect] Erro:', err);
+                showToast('Erro no widget de conexão.', 'error');
+            },
+
+            // Define o tema visual do widget (combina com o dark mode do HorizonAPP).
+            theme: { variant: 'dark' },
+        });
+    }
+
+    // ── Botão Conectar ─────────────────────────────────────────────────────
+    const btnConectar = document.getElementById('btn-conectar-banco');
+    if (btnConectar) {
+        btnConectar.addEventListener('click', abrirWidget);
+    }
+
+    // ── Botões Sincronizar Manualmente ─────────────────────────────────────
+    document.querySelectorAll('.btn-sincronizar').forEach(function (btn) {
+        btn.addEventListener('click', async function () {
+            const url = btn.dataset.url;
+            const icon = btn.querySelector('.btn-sync-icon');
+            const text = btn.querySelector('.btn-sync-text');
+
+            // Feedback visual: spinner durante a requisição.
+            btn.disabled = true;
+            icon.classList.add('animate-spin');
+            if (text) text.textContent = 'Sincronizando...';
+
+            try {
+                const resp = await fetch(url, {
+                    method: 'POST',
+                    headers: { 'X-CSRFToken': getCookie('csrftoken') },
+                });
+                const data = await resp.json();
+
+                if (data.status === 'success') {
+                    showToast(data.mensagem, 'success');
+                } else {
+                    showToast(`Erro: ${data.mensagem}`, 'error');
+                }
+            } catch (err) {
+                showToast('Falha na comunicação com o servidor.', 'error');
+            } finally {
+                btn.disabled = false;
+                icon.classList.remove('animate-spin');
+                if (text) text.textContent = 'Sincronizar';
+            }
+        });
+    });
+});
+</script>
+{% endblock %}

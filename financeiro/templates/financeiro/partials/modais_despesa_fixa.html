@@ -1,0 +1,208 @@
+{% load static %}
+<div id="modalDespesa" class="fixed inset-0 bg-black/80 backdrop-blur-sm hidden flex justify-center items-center z-[60] p-4">
+    <div class="bg-[#0B1120] border border-slate-700 rounded-2xl p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto shadow-2xl">
+        <div class="flex justify-between items-center mb-6 border-b border-slate-800 pb-4">
+            <div>
+                <h2 class="text-xl font-bold text-white tracking-tight">Gerenciar Conta</h2>
+                <p class="text-xs text-slate-400 mt-1">Edite os detalhes ou veja o histórico de vínculos</p>
+            </div>
+            <button type="button" onclick="fecharModalDespesa()" class="h-8 w-8 bg-slate-800 rounded-full text-slate-400 hover:text-white hover:bg-slate-700 flex items-center justify-center transition-colors">
+                <i class="bi bi-x-lg text-sm pointer-events-none"></i>
+            </button>
+        </div>
+
+        <form id="formEditDespesa" method="POST" action="">
+            {% csrf_token %}
+            <input type="hidden" name="next" value="{{ redirect_next }}">
+            <div class="space-y-4 mb-6">
+                <div>
+                    <label class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1 block">Nome da Conta</label>
+                    <input type="text" name="nome" id="modalNome" class="w-full bg-[#151e32] text-white border border-slate-700 rounded-xl p-3 text-sm focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 outline-none transition-colors" required>
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1 block">Valor (R$)</label>
+                        <input type="number" step="0.01" name="valor_previsto" id="modalValor" class="w-full bg-[#151e32] text-white border border-slate-700 rounded-xl p-3 text-sm focus:border-cyan-500 outline-none" required>
+                    </div>
+                    <div>
+                        <label class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1 block">Dia Vencimento</label>
+                        <input type="number" name="dia_vencimento" id="modalDia" class="w-full bg-[#151e32] text-white border border-slate-700 rounded-xl p-3 text-sm focus:border-cyan-500 outline-none" min="1" max="31" required>
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1 block">Início</label>
+                        <input type="date" name="data_inicio" id="modalInicio" class="w-full bg-[#151e32] text-slate-300 border border-slate-700 rounded-xl p-3 text-sm focus:border-cyan-500 outline-none cursor-text">
+                    </div>
+                    <div>
+                        <label class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1 block">Fim (Opcional)</label>
+                        <input type="date" name="data_fim" id="modalFim" class="w-full bg-[#151e32] text-slate-300 border border-slate-700 rounded-xl p-3 text-sm focus:border-cyan-500 outline-none cursor-text">
+                    </div>
+                </div>
+
+                <div class="mt-4 mb-6 border-t border-slate-800 pt-4">
+                    <p class="text-xs text-slate-400 mb-2">Quer adicionar novos históricos a esta conta?</p>
+                    <input type="hidden" name="transacao_padrao_id_edicao" id="transacao_padrao_id_edicao">
+                    <button type="button" onclick="abrirBuscaTransacao('edicao')" id="btnVincularPadraoEdicao" class="w-full bg-[#151e32] border border-slate-700 border-dashed hover:border-cyan-500 text-cyan-500 text-xs font-bold uppercase tracking-wider py-3 rounded-xl transition-colors flex items-center justify-center gap-2">
+                        <i class="bi bi-search"></i> Vincular Novo Padrão
+                    </button>
+                </div>
+            </div>
+
+            <div class="flex justify-between items-center pt-2">
+                <button type="button" onclick="excluirDespesa()" class="text-red-400 hover:text-red-300 text-xs font-bold flex items-center gap-1 transition-colors px-2 py-2 rounded-lg hover:bg-red-500/10">
+                    <i class="bi bi-trash3"></i> Excluir
+                </button>
+                <button type="submit" class="bg-cyan-600 hover:bg-cyan-500 text-white px-5 py-2.5 rounded-xl text-sm font-bold shadow-[0_0_15px_rgba(8,145,178,0.4)] transition-all active:scale-95">
+                    Salvar Alterações
+                </button>
+            </div>
+        </form>
+
+        <div class="mt-8 border-t border-slate-800 pt-6">
+            <h3 class="text-sm font-bold text-slate-300 flex items-center gap-2 mb-4">
+                <i class="bi bi-clock-history text-cyan-400"></i> Histórico de Lançamentos
+            </h3>
+            <div class="bg-[#151e32] border border-slate-700/50 rounded-xl max-h-48 overflow-y-auto" id="historicoContainer"></div>
+        </div>
+    </div>
+</div>
+
+<form id="formExcluirDespesa" method="POST" action="" class="hidden">
+    {% csrf_token %}
+    <input type="hidden" name="next" value="{{ redirect_next }}">
+</form>
+
+<div id="modalNovaDespesa" class="fixed inset-0 bg-black/80 backdrop-blur-sm hidden flex justify-center items-center z-[60] p-4">
+    <div class="bg-[#0B1120] border border-slate-700 rounded-2xl p-6 w-full max-w-lg shadow-2xl">
+        <div class="flex justify-between items-center mb-6 border-b border-slate-800 pb-4">
+            <div>
+                <h2 class="text-xl font-bold text-white tracking-tight">Novo Provisionamento</h2>
+                <p id="modalNovaDespesaSubtitulo" class="text-xs text-slate-400 mt-1">Planeje um gasto sem gerar transação real</p>
+            </div>
+            <button type="button" onclick="fecharModalNovaDespesa()" class="h-8 w-8 bg-slate-800 rounded-full text-slate-400 hover:text-white hover:bg-slate-700 flex items-center justify-center transition-colors">
+                <i class="bi bi-x-lg text-sm pointer-events-none"></i>
+            </button>
+        </div>
+
+        <form method="POST" action="{% url 'cadastrar_despesa_fixa_direta' %}">
+            {% csrf_token %}
+            <input type="hidden" name="next" value="{{ redirect_next }}">
+            <input type="hidden" name="macro_id" id="macroIdNovaDespesa" value="">
+            <div class="space-y-4">
+                <div>
+                    <label class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1 block">Nome da Despesa</label>
+                    <input type="text" name="nome" placeholder="Ex: Aluguel, Internet" class="w-full bg-[#151e32] text-white border border-slate-700 rounded-xl p-3 text-sm focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 outline-none transition-colors" required>
+                </div>
+
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1 block">Valor Previsto (R$)</label>
+                        <input type="number" step="0.01" name="valor_previsto" class="w-full bg-[#151e32] text-white border border-slate-700 rounded-xl p-3 text-sm focus:border-cyan-500 outline-none" required>
+                    </div>
+                    <div>
+                        <label class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1 block">Dia do Vencimento</label>
+                        <input type="number" name="dia_vencimento" min="1" max="31" class="w-full bg-[#151e32] text-white border border-slate-700 rounded-xl p-3 text-sm focus:border-cyan-500 outline-none" required>
+                    </div>
+                </div>
+
+                <div>
+                    <div class="flex justify-between items-center mb-1">
+                        <label class="text-xs font-bold text-slate-400 uppercase tracking-wider block">Categoria</label>
+                        <button type="button" onclick="abrirModalGerenciarCategorias()" class="text-slate-400 hover:text-cyan-400 text-xs flex items-center gap-1.5 transition-colors font-medium">
+                            <i class="bi bi-gear-fill"></i> Gerenciar Categorias
+                        </button>
+                    </div>
+                    <select name="categoria" id="categoriaNovaDespesa" class="w-full bg-[#151e32] text-white border border-slate-700 rounded-xl p-3 text-sm focus:border-cyan-500 outline-none" style="width: 100%;" required>
+                        <option value="" disabled selected>Selecione uma categoria...</option>
+                        {% for cat in categorias %}
+                            <option value="{{ cat.id }}" data-macro-id="{{ cat.macro_categoria_id }}">{{ cat.macro_categoria.nome }} &gt; {{ cat.nome }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1 block">Data de Início</label>
+                        <input type="date" name="data_inicio" class="w-full bg-[#151e32] text-slate-300 border border-slate-700 rounded-xl p-3 text-sm focus:border-cyan-500 outline-none cursor-text" required>
+                    </div>
+                    <div>
+                        <label class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1 block">Fim (Opcional)</label>
+                        <input type="date" name="data_fim" class="w-full bg-[#151e32] text-slate-300 border border-slate-700 rounded-xl p-3 text-sm focus:border-cyan-500 outline-none cursor-text">
+                    </div>
+                </div>
+
+                <input type="hidden" name="transacao_padrao_id" id="transacao_padrao_id_nova_despesa">
+
+                <button type="button" onclick="abrirBuscaTransacao('nova')" id="btnVincularPadrao" class="w-full mt-4 bg-slate-800/80 hover:bg-slate-700 text-cyan-400 border border-slate-700 border-dashed text-xs font-bold py-3 rounded-xl flex items-center justify-center gap-2 transition-all">
+                    <i class="bi bi-search"></i> Vincular a uma Transação Passada
+                </button>
+            </div>
+            <button type="submit" class="w-full mt-8 bg-gradient-to-r from-cyan-600 to-emerald-600 hover:from-cyan-500 hover:to-emerald-500 text-white font-bold py-3.5 rounded-xl shadow-[0_0_15px_rgba(8,145,178,0.3)] active:scale-[0.98] transition-all">
+                CADASTRAR PLANEJAMENTO
+            </button>
+        </form>
+    </div>
+</div>
+
+<div id="modalBuscaTransacao" class="fixed inset-0 z-[70] hidden" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+    <div class="fixed inset-0 bg-[#000000]/80 backdrop-blur-sm" onclick="fecharBuscaTransacao()"></div>
+
+    <div class="fixed inset-x-0 top-16 mx-auto max-w-md bg-[#151e32] rounded-3xl shadow-2xl border border-slate-700 flex flex-col max-h-[75vh]">
+        <div class="p-5 border-b border-slate-700/50 flex items-center justify-between">
+            <h3 class="text-white font-bold tracking-wide">Selecionar Padrão</h3>
+            <button type="button" onclick="fecharBuscaTransacao()" class="text-slate-400 hover:text-white"><i class="bi bi-x-lg text-lg"></i></button>
+        </div>
+
+        <div class="p-5 flex-1 overflow-hidden flex flex-col">
+            <input type="text" id="inputBuscaTransacao" placeholder="Pesquise (ex: Netflix, Spotify)..." class="form-control w-full bg-[#0f172a] text-sm text-white border-slate-600 rounded-xl p-3 mb-4 focus:border-cyan-500">
+            <div id="listaTransacoesBusca" class="overflow-y-auto flex-1 space-y-2 pr-2 custom-scrollbar"></div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Gerenciar Categorias -->
+<div id="modalGerenciarCategorias" class="fixed inset-0 bg-black/80 backdrop-blur-sm hidden flex justify-center items-center z-[80] p-4">
+    <div class="bg-[#0B1120] border border-slate-700 rounded-2xl p-6 w-full max-w-md max-h-[85vh] overflow-y-auto shadow-2xl flex flex-col custom-scrollbar">
+        <!-- Cabeçalho -->
+        <div class="flex justify-between items-center mb-6 border-b border-slate-800 pb-4 shrink-0">
+            <div>
+                <h2 id="gerenciarCategoriasTitulo" class="text-lg font-bold text-white tracking-tight">
+                    Subcategorias
+                </h2>
+                <p class="text-xs text-slate-400 mt-1">
+                    Gerencie as opções de subcategoria
+                </p>
+            </div>
+            <button type="button" onclick="fecharModalGerenciarCategorias()" class="h-8 w-8 bg-slate-800 rounded-full text-slate-400 hover:text-white hover:bg-slate-700 flex items-center justify-center transition-colors">
+                <i class="bi bi-x-lg text-sm pointer-events-none"></i>
+            </button>
+        </div>
+
+        <!-- Formulário Adicionar Nova Categoria -->
+        <div class="mb-6 shrink-0 bg-[#151e32]/50 border border-slate-800 p-4 rounded-xl">
+            <h3 class="text-xs font-bold text-slate-300 uppercase tracking-wider mb-2">Nova Subcategoria</h3>
+            <form id="formAdicionarCategoria" class="flex gap-2">
+                <input type="text" id="novaCategoriaNomeInput" placeholder="Ex: Mercado, Assinaturas..." class="flex-1 bg-[#151e32] text-white border border-slate-700 rounded-xl px-3 py-2 text-xs focus:border-cyan-500 outline-none transition-colors" required>
+                <button type="submit" class="bg-cyan-600 hover:bg-cyan-500 text-white px-4 py-2 rounded-xl text-xs font-bold transition-colors flex items-center gap-1 shadow-md">
+                    <i class="bi bi-plus-lg"></i> Adicionar
+                </button>
+            </form>
+            <p id="erroAdicionarCategoria" class="text-red-400 text-[10px] mt-1.5 hidden"></p>
+        </div>
+
+        <!-- Lista de Categorias -->
+        <div class="flex-1 overflow-y-auto min-h-[150px] max-h-[40vh] custom-scrollbar pr-1">
+            <div id="listaCategoriasGerenciamento" class="space-y-2">
+                <!-- Populado dinamicamente via JS -->
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    window.HORIZON_CATEGORIAS_POR_MACRO = {{ categorias_por_macro_json|default:"{}"|safe }};
+</script>
+<script src="{% static 'financeiro/js/despesa_fixa_modais.js' %}"></script>
+<script src="{% static 'financeiro/js/gerenciar_categorias.js' %}"></script>
+

@@ -1,0 +1,485 @@
+{% extends 'base.html' %}
+
+{% block content %}
+{# ─── Cabeçalho ──────────────────────────────────────────────────────────── #}
+<header class="mb-7 mt-2">
+    <h1 class="text-2xl font-bold text-white tracking-tight flex items-center gap-3">
+        <span class="h-10 w-10 rounded-xl bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center shrink-0">
+            <i class="bi bi-hdd-network text-cyan-400 text-lg"></i>
+        </span>
+        Integrações
+    </h1>
+    <p class="text-xs text-slate-400 mt-1.5 font-medium tracking-wide ml-[52px]">
+        Gerencie como seus dados financeiros entram no HorizonAPP.
+    </p>
+</header>
+
+
+{# ══════════════════════════════════════════════════════════════════════════ #}
+{# CARD 1 — OPEN FINANCE (DESTAQUE)                                          #}
+{# ══════════════════════════════════════════════════════════════════════════ #}
+<section class="mb-5">
+    <div class="bg-[#0d1829] border border-cyan-500/20 rounded-2xl overflow-hidden shadow-[0_0_30px_rgba(6,182,212,0.07)]">
+
+        {# Cabeçalho do card #}
+        <div class="px-5 pt-5 pb-4 border-b border-slate-800/80 flex items-center justify-between gap-3">
+            <div class="flex items-center gap-3 min-w-0">
+                <div class="h-9 w-9 rounded-xl bg-cyan-500/15 border border-cyan-500/25 flex items-center justify-center shrink-0">
+                    <i class="bi bi-bank2 text-cyan-400"></i>
+                </div>
+                <div class="min-w-0">
+                    <h2 class="text-sm font-bold text-white leading-tight">Conexões Open Finance</h2>
+                    <p class="text-[10px] text-slate-500 mt-0.5">Sincronização automática via Pluggy</p>
+                </div>
+            </div>
+            {# Badge Recomendado #}
+            <span class="shrink-0 text-[9px] font-black uppercase tracking-widest
+                         bg-cyan-500/10 text-cyan-400 border border-cyan-500/30
+                         px-2.5 py-1 rounded-full whitespace-nowrap">
+                ✦ Automático
+            </span>
+        </div>
+
+        <div class="p-5">
+            {# ── Sem conexões: CTA primário ──────────────────────────────── #}
+            {% if not conexoes %}
+            <div class="text-center py-6">
+                <div class="h-16 w-16 mx-auto rounded-2xl bg-cyan-500/10 border border-cyan-500/20
+                            flex items-center justify-center mb-4
+                            shadow-[0_0_20px_rgba(6,182,212,0.15)]">
+                    <i class="bi bi-plug-fill text-cyan-400 text-2xl"></i>
+                </div>
+                <p class="text-sm font-semibold text-slate-200 mb-1">Conecte sua conta bancária</p>
+                <p class="text-xs text-slate-500 mb-5 max-w-xs mx-auto leading-relaxed">
+                    Sincronize transações automaticamente, sem precisar fazer upload de arquivos.
+                </p>
+                <button
+                    id="btn-conectar-banco"
+                    type="button"
+                    class="group inline-flex items-center gap-2.5
+                           bg-gradient-to-r from-cyan-600 to-cyan-500
+                           hover:from-cyan-500 hover:to-cyan-400
+                           text-white font-bold py-3.5 px-7 rounded-xl text-sm uppercase tracking-widest
+                           shadow-[0_4px_20px_rgba(6,182,212,0.35)] hover:shadow-[0_4px_28px_rgba(6,182,212,0.55)]
+                           active:scale-[0.97] transition-all duration-200">
+                    <i class="bi bi-plus-lg group-hover:rotate-90 transition-transform duration-200"></i>
+                    Conectar Conta Bancária
+                </button>
+
+                {# Banner de segurança minimalista #}
+                <p class="text-[10px] text-slate-600 mt-4 flex items-center justify-center gap-1.5">
+                    <i class="bi bi-shield-check text-slate-600"></i>
+                    Protegido pelo Open Finance Brasil · Regulamentado pelo Banco Central
+                </p>
+            </div>
+
+            {# ── Com conexões: lista + botão adicionar ───────────────────── #}
+            {% else %}
+            <div class="space-y-3 mb-4" id="lista-conexoes">
+                {% for conexao in conexoes %}
+                <article
+                    id="conexao-card-{{ conexao.pk }}"
+                    class="flex items-center justify-between gap-3
+                           bg-[#151e32] border border-slate-800 rounded-xl p-3.5
+                           hover:border-slate-600 transition-colors group">
+
+                    <div class="flex items-center gap-3 min-w-0">
+                        <div class="h-10 w-10 shrink-0 rounded-xl bg-slate-800 border border-slate-700
+                                    flex items-center justify-center text-slate-400 text-base">
+                            <i class="bi bi-bank2"></i>
+                        </div>
+                        <div class="min-w-0">
+                            <p class="text-sm font-bold text-slate-100 truncate">{{ conexao.instituicao_nome }}</p>
+                            <span class="text-[10px] font-bold uppercase tracking-wider {{ conexao.cor_status_tailwind }}">
+                                <i class="bi {{ conexao.icone_status_bootstrap }}"></i>
+                                {{ conexao.get_status_display }}
+                            </span>
+                        </div>
+                    </div>
+
+                    <div class="flex items-center gap-2 shrink-0">
+                        <span class="text-[10px] text-slate-500 hidden sm:block">
+                            {{ conexao.atualizado_em|date:"d/m H:i" }}
+                        </span>
+                        <button
+                            type="button"
+                            data-url="{% url 'sincronizar_conexao_ajax' conexao.pk %}"
+                            class="btn-sincronizar h-8 w-8 rounded-lg bg-slate-800 border border-slate-700
+                                   text-slate-400 flex items-center justify-center text-sm
+                                   hover:bg-cyan-500/10 hover:text-cyan-400 hover:border-cyan-500/30
+                                   transition-colors disabled:opacity-40"
+                            title="Sincronizar agora">
+                            <i class="bi bi-arrow-repeat btn-sync-icon"></i>
+                        </button>
+                    </div>
+                </article>
+                {% endfor %}
+            </div>
+
+            {# Botão secundário para adicionar nova conta #}
+            <button
+                id="btn-conectar-banco"
+                type="button"
+                class="w-full flex items-center justify-center gap-2
+                       border border-cyan-500/30 text-cyan-400 font-bold
+                       py-2.5 rounded-xl text-xs uppercase tracking-widest
+                       hover:bg-cyan-500/10 active:scale-[0.98] transition-all">
+                <i class="bi bi-plus-lg"></i>
+                Adicionar Nova Conta
+            </button>
+            {% endif %}
+        </div>
+    </div>
+</section>
+
+
+{# ══════════════════════════════════════════════════════════════════════════ #}
+{# CARD 2 — IMPORTAÇÃO MANUAL CSV (SECUNDÁRIO)                               #}
+{# ══════════════════════════════════════════════════════════════════════════ #}
+<section class="mb-5">
+    {# Cabeçalho colapsável — o CSV é alternativa, não precisa de tela cheia #}
+    <details class="group" {% if lotes %}open{% endif %}>
+        <summary class="flex items-center justify-between gap-3 cursor-pointer
+                        bg-[#151e32] border border-slate-800 rounded-2xl px-5 py-4
+                        hover:border-slate-600 transition-colors list-none
+                        [&::-webkit-details-marker]:hidden">
+            <div class="flex items-center gap-3">
+                <div class="h-8 w-8 rounded-lg bg-slate-700/60 border border-slate-700
+                            flex items-center justify-center shrink-0">
+                    <i class="bi bi-filetype-csv text-slate-400 text-sm"></i>
+                </div>
+                <div>
+                    <h2 class="text-sm font-bold text-slate-300">Importação Manual</h2>
+                    <p class="text-[10px] text-slate-600 mt-0.5">Alternativa via upload de extrato CSV</p>
+                </div>
+            </div>
+            <i class="bi bi-chevron-down text-slate-600 transition-transform duration-200
+                      group-open:rotate-180 shrink-0"></i>
+        </summary>
+
+        <div class="bg-[#151e32]/50 border border-t-0 border-slate-800 rounded-b-2xl px-5 pt-4 pb-5 -mt-2">
+            <p class="text-xs text-slate-500 mb-4 leading-relaxed">
+                Instituição não suportada pelo Open Finance?
+                Faça o download do extrato no site do banco e importe aqui.
+            </p>
+
+            {# Formulário CSV — design secundário para não competir com o Open Finance #}
+            <form id="upload-form" method="post" enctype="multipart/form-data">
+                {% csrf_token %}
+                <div class="flex flex-col sm:flex-row gap-3">
+                    <label
+                        for="extrato-input"
+                        class="flex-1 flex items-center gap-3 px-4 py-3
+                               border border-dashed border-slate-700 rounded-xl
+                               hover:border-slate-500 cursor-pointer
+                               bg-slate-800/40 transition-colors group/label">
+                        <i class="bi bi-cloud-arrow-up text-slate-500 group-hover/label:text-slate-300
+                                  text-xl transition-colors shrink-0"></i>
+                        <div class="min-w-0">
+                            <p class="text-xs font-semibold text-slate-400 group-hover/label:text-slate-200
+                                      transition-colors truncate" id="csv-label-text">
+                                Selecionar arquivo .csv
+                            </p>
+                            <p class="text-[10px] text-slate-600 mt-0.5">Padrão Nubank</p>
+                        </div>
+                    </label>
+                    <input type="file" name="extrato" id="extrato-input" accept=".csv"
+                           class="sr-only" required>
+
+                    <button
+                        type="submit"
+                        id="btn-csv-submit"
+                        class="flex items-center justify-center gap-2
+                               bg-slate-700 hover:bg-slate-600
+                               text-slate-200 font-bold py-3 px-5 rounded-xl text-xs
+                               uppercase tracking-widest transition-colors
+                               active:scale-[0.97] whitespace-nowrap
+                               disabled:opacity-50 disabled:cursor-not-allowed">
+                        <i class="bi bi-gear-wide-connected" id="btn-csv-icon"></i>
+                        <span id="btn-csv-text">Processar</span>
+                    </button>
+                </div>
+            </form>
+
+            {# ── Histórico de lotes CSV ──────────────────────────────────── #}
+            {% if lotes %}
+            <div class="mt-5">
+                <h3 class="text-[10px] text-slate-600 font-bold uppercase tracking-widest mb-3
+                           flex items-center gap-1.5">
+                    <i class="bi bi-clock-history"></i> Arquivos Processados
+                </h3>
+                <div class="space-y-2">
+                    {% for lote in lotes %}
+                    <article class="bg-[#0f172a]/60 border border-slate-800/60 rounded-xl p-3
+                                    flex items-center justify-between gap-3
+                                    hover:border-slate-700 transition-colors group">
+                        <div class="flex items-center gap-3 min-w-0">
+                            <div class="h-8 w-8 shrink-0 rounded-lg bg-emerald-500/10 border border-emerald-500/20
+                                        text-emerald-400 flex items-center justify-center text-sm">
+                                <i class="bi bi-file-earmark-spreadsheet"></i>
+                            </div>
+                            <div class="min-w-0">
+                                <p class="text-xs font-semibold text-slate-300 truncate">{{ lote.arquivo_nome }}</p>
+                                <p class="text-[10px] text-slate-600 mt-0.5">
+                                    {{ lote.data_importacao|date:"d/m/Y H:i" }}
+                                </p>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-2 shrink-0">
+                            <span class="text-[10px] font-bold text-slate-500 bg-slate-800/80
+                                         px-2 py-1 rounded-lg border border-slate-700 tracking-wide uppercase">
+                                {{ lote.transacoes_lote.count }} itens
+                            </span>
+                            <a href="{% url 'excluir_lote' lote.id %}"
+                               class="btn-excluir-lote h-7 w-7 rounded-lg bg-red-500/10 text-red-500
+                                      flex items-center justify-center text-xs
+                                      hover:bg-red-500 hover:text-white
+                                      border border-red-500/20 hover:border-red-500
+                                      transition-colors"
+                               aria-label="Excluir Lote">
+                                <i class="bi bi-trash3 pointer-events-none"></i>
+                            </a>
+                        </div>
+                    </article>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </details>
+</section>
+
+
+{# ─── Toast de feedback ──────────────────────────────────────────────────── #}
+<div id="toast-int"
+     class="fixed bottom-24 left-1/2 -translate-x-1/2 z-50
+            bg-[#151e32] border border-slate-700 text-sm text-slate-200 font-medium
+            px-5 py-3 rounded-2xl shadow-2xl flex items-center gap-2.5
+            transition-all duration-300 opacity-0 pointer-events-none scale-95 whitespace-nowrap">
+    <i id="toast-int-icon" class="bi bi-check-circle-fill text-emerald-400"></i>
+    <span id="toast-int-msg">Operação concluída.</span>
+</div>
+
+{% endblock %}
+
+
+{% block scripts %}
+{% comment %}
+  SDK do Pluggy Connect
+  NAO adicione "defer" nem "async" aqui.
+  O nosso script inline abaixo usa DOMContentLoaded, mas o proprio
+  PluggyConnect so fica disponivel apos a execucao sincrona deste script.
+  Com "defer", o browser carrega os dois em paralelo e ha race condition.
+  Versao atual: v2.8.2 (v1 e v2.1.1 retornam 404 na CDN oficial).
+{% endcomment %}
+<script src="https://cdn.pluggy.ai/pluggy-connect/v2.8.2/pluggy-connect.js"></script>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    'use strict';
+
+    // ── Toast ────────────────────────────────────────────────────────────
+    const toast    = document.getElementById('toast-int');
+    const toastMsg = document.getElementById('toast-int-msg');
+    const toastIco = document.getElementById('toast-int-icon');
+
+    function showToast(msg, tipo = 'success', duracaoMs = 4000) {
+        const icons = {
+            success: 'bi-check-circle-fill text-emerald-400',
+            error:   'bi-x-circle-fill text-red-400',
+            info:    'bi-info-circle-fill text-cyan-400',
+            loading: 'bi-arrow-repeat animate-spin text-cyan-400',
+        };
+        toastIco.className = `bi ${icons[tipo] || icons.success}`;
+        toastMsg.textContent = msg;
+        toast.classList.remove('opacity-0', 'pointer-events-none', 'scale-95');
+        toast.classList.add('opacity-100', 'scale-100');
+        if (duracaoMs > 0) {
+            setTimeout(() => {
+                toast.classList.remove('opacity-100', 'scale-100');
+                toast.classList.add('opacity-0', 'pointer-events-none', 'scale-95');
+            }, duracaoMs);
+        }
+    }
+
+    function hideToast() {
+        toast.classList.remove('opacity-100', 'scale-100');
+        toast.classList.add('opacity-0', 'pointer-events-none', 'scale-95');
+    }
+
+    // ── CSRF ──────────────────────────────────────────────────────────────
+    function getCookie(name) {
+        let v = null;
+        document.cookie.split(';').forEach(c => {
+            const t = c.trim();
+            if (t.startsWith(name + '=')) v = decodeURIComponent(t.slice(name.length + 1));
+        });
+        return v;
+    }
+
+    // ── Upload CSV: preview de nome + spinner ─────────────────────────────
+    const inputCSV  = document.getElementById('extrato-input');
+    const labelText = document.getElementById('csv-label-text');
+    const formCSV   = document.getElementById('upload-form');
+    const btnCSV    = document.getElementById('btn-csv-submit');
+    const iconCSV   = document.getElementById('btn-csv-icon');
+    const txtCSV    = document.getElementById('btn-csv-text');
+
+    if (inputCSV && labelText) {
+        inputCSV.addEventListener('change', function () {
+            labelText.textContent = this.files[0]?.name || 'Selecionar arquivo .csv';
+        });
+    }
+
+    if (formCSV && btnCSV) {
+        formCSV.addEventListener('submit', function () {
+            btnCSV.disabled = true;
+            iconCSV.className = 'bi bi-arrow-repeat animate-spin';
+            txtCSV.textContent = 'Processando…';
+        });
+    }
+
+    // ── Excluir lote: confirmação ─────────────────────────────────────────
+    document.querySelectorAll('.btn-excluir-lote').forEach(btn => {
+        btn.addEventListener('click', e => {
+            if (!confirm('⚠️ Essa ação vai apagar o arquivo e todos os lançamentos vinculados. Confirma?')) {
+                e.preventDefault();
+            }
+        });
+    });
+
+    // ── Pluggy Connect: salvar conexão ────────────────────────────────────
+    async function salvarConexao(itemId, nomeInst) {
+        const url = "{% url 'salvar_conexao_bancaria_ajax' %}";
+        try {
+            const resp = await fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') },
+                body: JSON.stringify({ item_id: itemId, instituicao_nome: nomeInst }),
+            });
+            const data = await resp.json();
+            if (data.status === 'created') {
+                // Sinaliza que a sincronização inicial está rodando em background
+                showToast(`✅ ${data.instituicao_nome} conectado! Importando transações…`, 'loading', 0);
+                // Aguarda alguns segundos para dar tempo da sync inicial e então recarrega
+                setTimeout(() => {
+                    hideToast();
+                    location.reload();
+                }, 5000);
+            } else if (data.status === 'exists') {
+                showToast('Conexão já existe. Dados sincronizados.', 'info');
+                setTimeout(() => location.reload(), 1600);
+            } else {
+                showToast(`Erro: ${data.mensagem}`, 'error');
+            }
+        } catch (err) {
+            showToast('Falha na comunicação com o servidor.', 'error');
+        }
+    }
+
+    // ── Iniciar widget Pluggy (via token gerado pelo backend) ──────────────
+    async function abrirWidget() {
+        const btnConectar = document.getElementById('btn-conectar-banco');
+
+        // Feedback visual imediato no botão
+        if (btnConectar) {
+            btnConectar.disabled = true;
+            btnConectar.innerHTML = '<i class="bi bi-arrow-repeat animate-spin"></i> Preparando…';
+        }
+
+        showToast('Iniciando conexão segura…', 'loading', 0);
+
+        try {
+            // Chama o backend para gerar o Connect Token efêmero (Client Secret fica no servidor)
+            const tokenResp = await fetch("{% url 'gerar_token_pluggy' %}", {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCookie('csrftoken'),
+                },
+                body: JSON.stringify({}),
+            });
+
+            if (!tokenResp.ok) {
+                const errData = await tokenResp.json().catch(() => ({}));
+                throw new Error(errData.mensagem || `HTTP ${tokenResp.status}`);
+            }
+
+            const { access_token: connectToken } = await tokenResp.json();
+            hideToast();
+
+            if (!connectToken) {
+                throw new Error('Token inválido recebido do servidor.');
+            }
+
+            // Inicializa o widget com o token recebido do backend
+            // v2.x API: instanciar com `new PluggyConnect({...})` e depois chamar `.init()`
+            const pluggyConnect = new PluggyConnect({
+                connectToken,
+                onSuccess(itemData) {
+                    const itemId   = itemData.item.id;
+                    const nomeInst = itemData.item.connector?.name || 'Banco Desconhecido';
+                    salvarConexao(itemId, nomeInst);
+                },
+                onClose()  {
+                    showToast('Conexão cancelada.', 'info');
+                    _resetarBtnConectar();
+                },
+                onError(e) {
+                    console.error('[Pluggy]', e);
+                    showToast('Erro no widget de conexão.', 'error');
+                    _resetarBtnConectar();
+                },
+                theme: 'dark',
+            });
+            pluggyConnect.init();
+
+        } catch (err) {
+            console.error('[gerar_token_pluggy]', err);
+            showToast(`Erro ao iniciar: ${err.message}`, 'error');
+            _resetarBtnConectar();
+        }
+    }
+
+    function _resetarBtnConectar() {
+        const btn = document.getElementById('btn-conectar-banco');
+        if (btn) {
+            btn.disabled = false;
+            // Detecta qual variante do botão está visível (CTA primário ou secundário)
+            const isPrimario = btn.classList.contains('bg-gradient-to-r');
+            btn.innerHTML = isPrimario
+                ? '<i class="bi bi-plus-lg group-hover:rotate-90 transition-transform duration-200"></i> Conectar Conta Bancária'
+                : '<i class="bi bi-plus-lg"></i> Adicionar Nova Conta';
+        }
+    }
+
+    const btnConectar = document.getElementById('btn-conectar-banco');
+    if (btnConectar) btnConectar.addEventListener('click', abrirWidget);
+
+    // ── Sincronizar manualmente cada conexão ──────────────────────────────
+    document.querySelectorAll('.btn-sincronizar').forEach(btn => {
+        btn.addEventListener('click', async function () {
+            const icon = btn.querySelector('.btn-sync-icon');
+            btn.disabled = true;
+            icon.classList.add('animate-spin');
+
+            try {
+                const resp = await fetch(btn.dataset.url, {
+                    method: 'POST',
+                    headers: { 'X-CSRFToken': getCookie('csrftoken') },
+                });
+                const data = await resp.json();
+                showToast(data.status === 'success' ? data.mensagem : `Erro: ${data.mensagem}`,
+                          data.status === 'success' ? 'success' : 'error');
+            } catch {
+                showToast('Falha na comunicação com o servidor.', 'error');
+            } finally {
+                btn.disabled = false;
+                icon.classList.remove('animate-spin');
+            }
+        });
+    });
+});
+</script>
+{% endblock %}
+

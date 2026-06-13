@@ -1,0 +1,125 @@
+{# Avatar Upload #}
+<div class="flex items-center gap-5 mb-6">
+    <div class="relative group">
+        {% if request.user.perfil.foto_perfil %}
+            <img src="{{ request.user.perfil.foto_perfil.url }}" id="avatar-preview" class="h-20 w-20 rounded-full object-cover ring-4 ring-slate-800 bg-slate-900">
+            <div id="avatar-preview-placeholder" class="hidden h-20 w-20 rounded-full bg-slate-800 border-2 border-dashed border-slate-600 flex items-center justify-center">
+                <i class="bi bi-person-circle text-4xl text-slate-500"></i>
+            </div>
+        {% else %}
+            <div id="avatar-preview-placeholder" class="h-20 w-20 rounded-full bg-slate-800 border-2 border-dashed border-slate-600 flex items-center justify-center">
+                <i class="bi bi-person-circle text-4xl text-slate-500"></i>
+            </div>
+            <img src="" id="avatar-preview" class="h-20 w-20 rounded-full object-cover ring-4 ring-slate-800 bg-slate-900 hidden">
+        {% endif %}
+        
+        <label for="{{ form.foto_perfil.id_for_label }}" class="absolute inset-0 flex items-center justify-center bg-black/60 rounded-full opacity-0 group-hover:opacity-100 cursor-pointer transition-opacity">
+            <i class="bi bi-camera text-white text-xl"></i>
+        </label>
+        
+        <input type="file" name="{{ form.foto_perfil.html_name }}" id="{{ form.foto_perfil.id_for_label }}" class="hidden" accept="image/*">
+    </div>
+    <div>
+        <p class="text-sm font-bold text-white">Foto de Perfil</p>
+        <p class="text-[11px] text-slate-500 mt-1">JPG, GIF ou PNG. Máximo de 2MB.</p>
+        <label for="{{ form.foto_perfil.id_for_label }}" class="mt-2 inline-block px-3 py-1.5 bg-slate-800 hover:bg-slate-700 rounded-lg text-xs font-medium text-slate-300 cursor-pointer transition-colors border border-slate-700">
+            Alterar foto
+        </label>
+        {% if form.foto_perfil.errors %}
+            <div class="mt-1 bg-red-500/10 border border-red-700/40 rounded-lg p-2">
+                {% for error in form.foto_perfil.errors %}
+                <p class="text-red-400 text-xs leading-snug">
+                    <i class="bi bi-x-circle-fill mr-1 text-[10px]"></i>{{ error }}
+                </p>
+                {% endfor %}
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+{# Dados Pessoais #}
+<div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+    <div>
+        <label class="block text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1.5" for="{% if form.nome %}{{ form.nome.id_for_label }}{% else %}{{ form_nome.id_for_label }}{% endif %}">Nome Completo</label>
+        {% if form.nome %}
+            <input type="text" name="{{ form.nome.html_name }}" id="{{ form.nome.id_for_label }}" value="{{ form.nome.value|default:'' }}" class="form-input-dark {% if form.nome.errors %}!border-red-500/60{% endif %}" placeholder="Seu nome" required>
+            {% if form.nome.errors %}
+                <div class="mt-1.5 bg-red-500/10 border border-red-700/40 rounded-lg p-2">
+                    {% for error in form.nome.errors %}
+                    <p class="text-red-400 text-xs leading-snug"><i class="bi bi-x-circle-fill mr-1 text-[10px]"></i>{{ error }}</p>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        {% elif form_nome %}
+            <input type="text" name="{{ form_nome.html_name }}" id="{{ form_nome.id_for_label }}" value="{{ form_nome.value|default:'' }}" class="form-input-dark {% if form_nome.errors %}!border-red-500/60{% endif %}" placeholder="Seu nome" required>
+            {% if form_nome.errors %}
+                <div class="mt-1.5 bg-red-500/10 border border-red-700/40 rounded-lg p-2">
+                    {% for error in form_nome.errors %}
+                    <p class="text-red-400 text-xs leading-snug"><i class="bi bi-x-circle-fill mr-1 text-[10px]"></i>{{ error }}</p>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        {% endif %}
+    </div>
+
+    <div>
+        <label class="block text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1.5" for="{{ form.telefone.id_for_label }}">Telefone</label>
+        <input type="text" name="{{ form.telefone.html_name }}" id="{{ form.telefone.id_for_label }}" value="{{ form.telefone.value|default:'' }}" class="form-input-dark {% if form.telefone.errors %}!border-red-500/60{% endif %}" placeholder="(00) 00000-0000">
+        {% if form.telefone.errors %}
+            <div class="mt-1.5 bg-red-500/10 border border-red-700/40 rounded-lg p-2">
+                {% for error in form.telefone.errors %}
+                <p class="text-red-400 text-xs leading-snug"><i class="bi bi-x-circle-fill mr-1 text-[10px]"></i>{{ error }}</p>
+                {% endfor %}
+            </div>
+        {% endif %}
+    </div>
+
+    <div>
+        <label class="block text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1.5" for="{{ form.data_nascimento.id_for_label }}">Data de Nascimento</label>
+        <input type="date" name="{{ form.data_nascimento.html_name }}" id="{{ form.data_nascimento.id_for_label }}" value="{{ form.data_nascimento.value|date:'Y-m-d'|default:form.data_nascimento.value|default:'' }}" class="form-input-dark {% if form.data_nascimento.errors %}!border-red-500/60{% endif %}">
+        {% if form.data_nascimento.errors %}
+            <div class="mt-1.5 bg-red-500/10 border border-red-700/40 rounded-lg p-2">
+                {% for error in form.data_nascimento.errors %}
+                <p class="text-red-400 text-xs leading-snug"><i class="bi bi-x-circle-fill mr-1 text-[10px]"></i>{{ error }}</p>
+                {% endfor %}
+            </div>
+        {% endif %}
+    </div>
+
+    <div>
+        <label class="block text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1.5" for="{{ form.sexo.id_for_label }}">Sexo</label>
+        <select name="{{ form.sexo.html_name }}" id="{{ form.sexo.id_for_label }}" class="form-input-dark {% if form.sexo.errors %}!border-red-500/60{% endif %}">
+            {% for choice in form.sexo.field.choices %}
+                <option value="{{ choice.0 }}" {% if form.sexo.value == choice.0 %}selected{% endif %}>{{ choice.1 }}</option>
+            {% endfor %}
+        </select>
+        {% if form.sexo.errors %}
+            <div class="mt-1.5 bg-red-500/10 border border-red-700/40 rounded-lg p-2">
+                {% for error in form.sexo.errors %}
+                <p class="text-red-400 text-xs leading-snug"><i class="bi bi-x-circle-fill mr-1 text-[10px]"></i>{{ error }}</p>
+                {% endfor %}
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const fotoInput = document.getElementById('{{ form.foto_perfil.id_for_label }}');
+        const fotoPreview = document.getElementById('avatar-preview');
+        const fotoPlaceholder = document.getElementById('avatar-preview-placeholder');
+
+        if (fotoInput && fotoPreview) {
+            fotoInput.addEventListener('change', function(e) {
+                const file = e.target.files[0];
+                if (file) {
+                    fotoPreview.src = URL.createObjectURL(file);
+                    fotoPreview.classList.remove('hidden');
+                    if (fotoPlaceholder) {
+                        fotoPlaceholder.classList.add('hidden');
+                    }
+                }
+            });
+        }
+    });
+</script>

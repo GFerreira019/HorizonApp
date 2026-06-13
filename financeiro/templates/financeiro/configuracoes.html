@@ -1,0 +1,122 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Configurações | HorizonAPP{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto pb-10">
+    <div class="mb-6">
+        <h2 class="text-2xl font-black text-white tracking-tight">Configurações</h2>
+        <p class="text-slate-500 text-sm mt-1">Gerencie seu perfil, preferências e segurança.</p>
+    </div>
+
+    <form method="POST" enctype="multipart/form-data" class="space-y-6">
+        {% csrf_token %}
+
+        {# ── BLOCO 1: PERFIL ── #}
+        <div class="bg-[#151e32] border border-slate-800 rounded-2xl shadow-xl overflow-hidden">
+            <div class="px-5 py-4 border-b border-slate-800 bg-slate-900/50">
+                <h3 class="text-sm font-bold text-slate-300 uppercase tracking-widest flex items-center gap-2">
+                    <i class="bi bi-person text-indigo-400"></i> Meu Perfil
+                </h3>
+            </div>
+            
+            <div class="p-5 sm:p-6 space-y-6">
+                {% include 'financeiro/partials/form_perfil.html' with form=perfil_form form_nome=user_form.first_name %}
+                
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-6">
+                    <div>
+                        <label class="block text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1.5" for="{{ user_form.email.id_for_label }}">E-mail</label>
+                        {{ user_form.email }}
+                        {% if user_form.email.errors %}
+                            <div class="mt-1.5 bg-red-500/10 border border-red-700/40 rounded-lg p-2">
+                                {% for error in user_form.email.errors %}
+                                <p class="text-red-400 text-xs leading-snug"><i class="bi bi-x-circle-fill mr-1 text-[10px]"></i>{{ error }}</p>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        {# ── BLOCO 2: SEGURANÇA ── #}
+        <div class="bg-[#151e32] border border-slate-800 rounded-2xl shadow-xl overflow-hidden">
+            <div class="px-5 py-4 border-b border-slate-800 bg-slate-900/50">
+                <h3 class="text-sm font-bold text-slate-300 uppercase tracking-widest flex items-center gap-2">
+                    <i class="bi bi-shield-lock text-rose-400"></i> Segurança
+                </h3>
+            </div>
+            
+            <div class="p-5 sm:p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                <div>
+                    <h4 class="text-sm font-bold text-white">Senha de Acesso</h4>
+                    <p class="text-xs text-slate-500 mt-1">É recomendado usar uma senha forte que você não esteja usando em outro lugar.</p>
+                </div>
+                <a href="{% url 'account_change_password' %}" class="shrink-0 px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 text-sm font-medium rounded-xl border border-slate-700 transition-colors flex items-center gap-2">
+                    <i class="bi bi-key"></i> Alterar Senha
+                </a>
+            </div>
+        </div>
+
+        {# ── BLOCO 3: INTEGRAÇÕES ── #}
+        <div class="bg-[#151e32] border border-slate-800 rounded-2xl shadow-xl overflow-hidden">
+            <div class="px-5 py-4 border-b border-slate-800 bg-slate-900/50">
+                <h3 class="text-sm font-bold text-slate-300 uppercase tracking-widest flex items-center gap-2">
+                    <i class="bi bi-robot text-sky-400"></i> Integração
+                </h3>
+            </div>
+            
+            <div class="p-5 sm:p-6 space-y-4">
+                <div class="flex items-start gap-3 bg-sky-950/30 p-4 rounded-xl border border-sky-900/50">
+                    <i class="bi bi-telegram text-2xl text-sky-400"></i>
+                    <div>
+                        <h4 class="text-sm font-bold text-sky-300">Guardião - Bot do Telegram</h4>
+                        <p class="text-xs text-sky-200/70 mt-1 leading-relaxed">
+                            Conecte o bot do HorizonAPP no Telegram para receber alertas automáticos de vencimento e relatórios rápidos. 
+                            Envie <code class="bg-sky-950 px-1 py-0.5 rounded text-sky-300">/start</code> para o bot para obter seu ID.
+                        </p>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1.5">Telegram Chat ID</label>
+                    {{ perfil_form.telegram_chat_id }}
+                    <p class="text-[10px] text-slate-500 mt-1.5">Mantenha em branco para desativar as notificações.</p>
+                </div>
+            </div>
+        </div>
+
+        {# ── AÇÕES ── #}
+        <div class="flex justify-end gap-3 pt-2">
+            <a href="{% url 'dashboard' %}" class="px-5 py-2.5 bg-transparent hover:bg-slate-800 text-slate-400 hover:text-white text-sm font-bold rounded-xl transition-colors">
+                Cancelar
+            </a>
+            <button type="submit" class="px-6 py-2.5 bg-gradient-to-r from-cyan-600 to-teal-600 hover:from-cyan-500 hover:to-teal-500 text-white text-sm font-bold rounded-xl shadow-lg shadow-teal-900/30 transition-all active:scale-[0.98] flex items-center gap-2">
+                <i class="bi bi-check2"></i> Salvar Alterações
+            </button>
+        </div>
+    </form>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Script para preview da foto de perfil antes do upload
+    document.getElementById('id_foto_perfil').addEventListener('change', function(event) {
+        const file = event.target.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const preview = document.getElementById('avatar-preview');
+                const placeholder = document.getElementById('avatar-preview-placeholder');
+                
+                preview.src = e.target.result;
+                preview.classList.remove('hidden');
+                if(placeholder) placeholder.classList.add('hidden');
+            }
+            reader.readAsDataURL(file);
+        }
+    });
+</script>
+{% endblock %}

@@ -103,24 +103,6 @@
             <div class="h-1 bg-cyan-400 rounded-full shadow-[0_0_10px_rgba(34,211,238,0.6)]" style="width: 70%"></div>
         </div>
     </div>
-
-    <div class="col-span-2 mb-2">
-        <a href="{% url 'controle_gastos_fixos' %}" class="card-dark p-4 rounded-2xl shadow-lg border border-slate-800 flex items-center justify-between group hover:border-cyan-500/50 transition-all">
-            <div class="flex items-center gap-3">
-                <div class="h-10 w-10 rounded-xl bg-cyan-500/10 text-cyan-400 flex items-center justify-center">
-                    <i class="bi bi-calendar-check text-xl"></i>
-                </div>
-                <div>
-                    <h4 class="text-sm font-bold text-white">Custos Fixos do Mês</h4>
-                    <p class="text-[10px] text-gray-500">Clique para ver o que falta pagar</p>
-                </div>
-            </div>
-            <div class="flex items-center gap-2">
-                <span class="text-[9px] bg-amber-500/20 text-amber-400 px-2 py-1 rounded-md font-bold uppercase tracking-wider">Acompanhar</span>
-                <i class="bi bi-chevron-right text-slate-600 group-hover:text-cyan-400 transition-colors"></i>
-            </div>
-        </a>
-    </div>
 </div>
 
 <div class="card-dark rounded-3xl p-6 shadow-lg mb-6 relative flex flex-col items-center border border-slate-800/60">
@@ -138,10 +120,29 @@
 </div>
 
 <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-    <div class="card-dark rounded-3xl p-5 shadow-lg">
-        <h3 class="text-slate-300 font-bold mb-4 text-sm">Fluxo de Caixa</h3>
-        <div class="relative h-48 w-full">
+    <div class="card-dark rounded-3xl p-5 shadow-lg border border-slate-800/60">
+        <div class="flex justify-between items-center mb-4">
+            <h3 id="chartCardTitle" class="text-slate-300 font-bold text-sm flex items-center gap-2">
+                <i class="bi bi-cash-stack text-emerald-400"></i>
+                Fluxo de Caixa
+            </h3>
+            <button
+                id="btnToggleChart"
+                onclick="toggleChartView()"
+                title="Alternar visualização"
+                class="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-widest border transition-all duration-200
+                       border-slate-700 text-slate-400 bg-slate-800/50 hover:border-cyan-500/60 hover:text-cyan-400"
+            >
+                <i id="btnToggleIcon" class="bi bi-bar-chart-line text-[11px]"></i>
+                <span id="btnToggleLabel">Ver Macros</span>
+            </button>
+        </div>
+        <div class="relative h-48 w-full" id="chartWrapper">
             <canvas id="lineChart"></canvas>
+            <div id="chartEmptyState" class="hidden absolute inset-0 flex flex-col items-center justify-center gap-2">
+                <i class="bi bi-bar-chart text-slate-700 text-3xl"></i>
+                <p class="text-[11px] text-slate-500 font-bold uppercase tracking-wide" id="chartEmptyMsg">Nenhum dado disponível</p>
+            </div>
         </div>
     </div>
 
@@ -179,73 +180,6 @@
         </div>
     </div>
 </div>
-
-<div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-28">
-    <div class="card-dark rounded-3xl p-5 shadow-lg">
-        <h3 class="text-slate-300 font-bold mb-4 text-sm">Gestão de Contas</h3>
-        <div class="space-y-3">
-            <div class="flex items-center justify-between bg-[#111827] p-3 rounded-xl border border-slate-800">
-                <div class="flex items-center gap-3">
-                    <div class="h-9 w-9 rounded-full bg-purple-500/20 text-purple-400 flex items-center justify-center"><i class="bi bi-bank2"></i></div>
-                    <div>
-                        <p class="text-sm text-white font-bold">Nubank</p>
-                        <p class="text-[10px] text-slate-400">R$ 3.300,00</p>
-                    </div>
-                </div>
-                <div class="h-5 w-5 rounded border border-slate-600"></div>
-            </div>
-            </div>
-    </div>
-
-    <div class="card-dark rounded-3xl p-5 shadow-lg">
-        <h3 class="text-slate-300 font-bold mb-4 text-sm">Reservas & Metas</h3>
-        <div class="space-y-5">
-            <div>
-                <div class="flex justify-between text-xs mb-1.5">
-                    <span class="text-slate-300 font-medium">Reserva Emergência</span>
-                    <span class="text-cyan-400 font-bold">R$ 1k / 5k</span>
-                </div>
-                <div class="w-full bg-slate-800 rounded-full h-2.5 shadow-inner">
-                    <div class="bg-gradient-to-r from-cyan-600 to-cyan-400 h-2.5 rounded-full shadow-[0_0_10px_rgba(34,211,238,0.5)]" style="width: 20%"></div>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-
-<nav class="fixed bottom-0 left-0 w-full bg-[#0B1120]/95 backdrop-blur-md border-t border-slate-800 p-2 z-40 pb-5">
-    <div class="grid grid-cols-5 gap-1 max-w-md mx-auto relative">
-        <a href="{% url 'dashboard' %}" class="flex flex-col items-center justify-center p-2 text-cyan-400">
-            <i class="bi bi-grid-fill text-lg mb-0.5 shadow-cyan-500/50"></i>
-            <span class="text-[9px] font-bold">Dashboard</span>
-        </a>
-        
-        <a href="{% url 'historico_transacoes' %}" class="flex flex-col items-center justify-center p-2 text-slate-500 hover:text-white transition-colors">
-            <i class="bi bi-arrow-left-right text-lg mb-0.5"></i>
-            <span class="text-[9px] font-medium">Transações</span>
-        </a>
-
-        <div class="relative -top-8">
-            <button type="button" onclick="openModal()" class="h-14 w-14 rounded-full bg-gradient-teal border-[5px] border-[#0B1120] flex items-center justify-center text-white text-2xl shadow-[0_0_15px_rgba(13,148,136,0.6)] hover:scale-105 transition-transform" aria-label="Novo Lançamento">
-                <i class="bi bi-plus-lg"></i>
-            </button>
-        </div>
-
-        <a href="{% url 'importar_extrato' %}" class="flex flex-col items-center justify-center p-2 text-slate-500 hover:text-white transition-colors">
-            <i class="bi bi-cloud-arrow-up text-lg mb-0.5"></i>
-            <span class="text-[9px] font-medium">Importar</span>
-        </a>
-
-        <a href="{% url 'tela_auditoria' %}" class="flex flex-col items-center justify-center p-2 text-slate-500 hover:text-white transition-colors relative">
-            <i class="bi bi-shield-check text-lg mb-0.5"></i>
-            <span class="text-[9px] font-medium">Auditoria</span>
-            <span class="absolute top-1 right-2 flex h-2 w-2">
-                <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-                <span class="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
-            </span>
-        </a>
-    </div>
-</nav>
 
 <div id="periodModal" class="fixed inset-0 z-50 hidden" aria-labelledby="modal-title" role="dialog" aria-modal="true">
     <div class="fixed inset-0 bg-[#000000]/80 backdrop-blur-sm transition-opacity" onclick="closePeriodModal()"></div>
@@ -449,7 +383,207 @@
         document.getElementById('transactionModal').classList.add('hidden'); 
     }
 
-    // Inicialização do Chart.js
+    // Dados injetados pelo Django via json.dumps — seguros para eval
+    const DADOS_FLUXO = {{ dados_fluxo_json|safe }};
+    const DADOS_MACROS = {{ dados_macros_json|safe }};
+
+    // Estado do toggle: 'fluxo' | 'macros'
+    let viewAtual = 'fluxo';
+    let chartInstance = null;
+
+    // Paleta de cores consistente com o Design System do HorizonAPP
+    const CORES = {
+        emerald:   'rgba(52, 211, 153, 1)',
+        emeraldBg: 'rgba(52, 211, 153, 0.15)',
+        red:       'rgba(248, 113, 113, 1)',
+        redBg:     'rgba(248, 113, 113, 0.15)',
+        indigo:    'rgba(99, 102, 241, 1)',
+        indigoBg:  'rgba(99, 102, 241, 0.2)',
+        cyan:      'rgba(34, 211, 238, 1)',
+        cyanBg:    'rgba(34, 211, 238, 0.2)',
+        grid:      'rgba(51, 65, 85, 0.5)',
+        tick:      '#64748b',
+    };
+
+    // Opções comuns aos dois modos de gráfico
+    const BASE_OPTIONS = {
+        responsive: true,
+        maintainAspectRatio: false,
+        animation: { duration: 400, easing: 'easeInOutQuart' },
+        plugins: {
+            legend: {
+                display: true,
+                position: 'top',
+                align: 'end',
+                labels: { color: '#94a3b8', font: { size: 10, weight: 'bold' }, boxWidth: 10, padding: 12 },
+            },
+            tooltip: {
+                backgroundColor: '#1e293b',
+                borderColor: '#334155',
+                borderWidth: 1,
+                titleColor: '#e2e8f0',
+                bodyColor: '#94a3b8',
+                callbacks: {
+                    label: ctx => ` R$ ${ctx.raw.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
+                },
+            },
+        },
+    };
+
+    function renderizarFluxo(ctx) {
+        const dados = DADOS_FLUXO;
+        const semDados = dados.entradas.every(v => v === 0) && dados.saidas.every(v => v === 0);
+
+        if (semDados) {
+            mostrarEstadoVazio('Nenhum histórico de transações disponível');
+            return;
+        }
+
+        // Gradientes para o gráfico de linha
+        const gradEntrada = ctx.createLinearGradient(0, 0, 0, 200);
+        gradEntrada.addColorStop(0, 'rgba(52, 211, 153, 0.25)');
+        gradEntrada.addColorStop(1, 'rgba(52, 211, 153, 0)');
+
+        const gradSaida = ctx.createLinearGradient(0, 0, 0, 200);
+        gradSaida.addColorStop(0, 'rgba(248, 113, 113, 0.25)');
+        gradSaida.addColorStop(1, 'rgba(248, 113, 113, 0)');
+
+        chartInstance = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: dados.labels,
+                datasets: [
+                    {
+                        label: 'Entradas',
+                        data: dados.entradas,
+                        borderColor: CORES.emerald,
+                        backgroundColor: gradEntrada,
+                        tension: 0.4, fill: true,
+                        pointRadius: 3, pointHoverRadius: 6,
+                        pointBackgroundColor: CORES.emerald,
+                        borderWidth: 2,
+                    },
+                    {
+                        label: 'Saídas',
+                        data: dados.saidas,
+                        borderColor: CORES.red,
+                        backgroundColor: gradSaida,
+                        tension: 0.4, fill: true,
+                        pointRadius: 3, pointHoverRadius: 6,
+                        pointBackgroundColor: CORES.red,
+                        borderWidth: 2,
+                    },
+                ],
+            },
+            options: {
+                ...BASE_OPTIONS,
+                scales: {
+                    x: { grid: { display: false }, ticks: { color: CORES.tick, font: { size: 9 } } },
+                    y: { display: false, grid: { display: false } },
+                },
+            },
+        });
+    }
+
+    function renderizarMacros(ctx) {
+        const dados = DADOS_MACROS;
+        const semDados = dados.labels.length === 0;
+
+        if (semDados) {
+            mostrarEstadoVazio('Nenhuma macro-categoria com movimentação no período');
+            return;
+        }
+
+        chartInstance = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: dados.labels,
+                datasets: [
+                    {
+                        label: 'Planejado',
+                        data: dados.planejado,
+                        backgroundColor: CORES.indigoBg,
+                        borderColor: CORES.indigo,
+                        borderWidth: 2,
+                        borderRadius: 6,
+                    },
+                    {
+                        label: 'Realizado',
+                        data: dados.realizado,
+                        backgroundColor: CORES.cyanBg,
+                        borderColor: CORES.cyan,
+                        borderWidth: 2,
+                        borderRadius: 6,
+                    },
+                ],
+            },
+            options: {
+                ...BASE_OPTIONS,
+                indexAxis: dados.labels.length > 4 ? 'y' : 'x',  // horizontal se muitas macros
+                scales: {
+                    x: { grid: { color: CORES.grid }, ticks: { color: CORES.tick, font: { size: 9 } } },
+                    y: { grid: { color: CORES.grid }, ticks: { color: CORES.tick, font: { size: 9 } } },
+                },
+            },
+        });
+    }
+
+    function mostrarEstadoVazio(msg) {
+        document.getElementById('lineChart').classList.add('hidden');
+        const empty = document.getElementById('chartEmptyState');
+        document.getElementById('chartEmptyMsg').textContent = msg;
+        empty.classList.remove('hidden');
+    }
+
+    function esconderEstadoVazio() {
+        document.getElementById('lineChart').classList.remove('hidden');
+        document.getElementById('chartEmptyState').classList.add('hidden');
+    }
+
+    function renderizarGrafico() {
+        // Destrói instância anterior para evitar "canvas is already in use"
+        if (chartInstance) {
+            chartInstance.destroy();
+            chartInstance = null;
+        }
+        esconderEstadoVazio();
+
+        const ctx = document.getElementById('lineChart').getContext('2d');
+        if (viewAtual === 'fluxo') {
+            renderizarFluxo(ctx);
+        } else {
+            renderizarMacros(ctx);
+        }
+    }
+
+    function atualizarUI() {
+        const titulo    = document.getElementById('chartCardTitle');
+        const btnLabel  = document.getElementById('btnToggleLabel');
+        const btnIcon   = document.getElementById('btnToggleIcon');
+        const btn       = document.getElementById('btnToggleChart');
+
+        if (viewAtual === 'fluxo') {
+            titulo.innerHTML = '<i class="bi bi-cash-stack text-emerald-400"></i> Fluxo de Caixa';
+            btnLabel.textContent = 'Ver Macros';
+            btnIcon.className = 'bi bi-bar-chart-line text-[11px]';
+            btn.classList.remove('border-cyan-500/60', 'text-cyan-400', 'bg-cyan-500/5');
+            btn.classList.add('border-slate-700', 'text-slate-400', 'bg-slate-800/50');
+        } else {
+            titulo.innerHTML = '<i class="bi bi-bar-chart-line text-indigo-400"></i> Macro-categorias';
+            btnLabel.textContent = 'Ver Fluxo';
+            btnIcon.className = 'bi bi-cash-stack text-[11px]';
+            btn.classList.remove('border-slate-700', 'text-slate-400', 'bg-slate-800/50');
+            btn.classList.add('border-cyan-500/60', 'text-cyan-400', 'bg-cyan-500/5');
+        }
+    }
+
+    function toggleChartView() {
+        viewAtual = viewAtual === 'fluxo' ? 'macros' : 'fluxo';
+        atualizarUI();
+        renderizarGrafico();
+    }
+
+    // Inicialização ao carregar a página
     async function loadCharts() {
         try {
             const ctxDoughnut = document.getElementById('financeChart');
@@ -480,36 +614,8 @@
             console.error("Erro ao carregar dados do gráfico principal:", error);
         }
 
-        const ctxLine = document.getElementById('lineChart');
-        if (ctxLine) {
-            let context = ctxLine.getContext('2d');
-            let gradient = context.createLinearGradient(0, 0, 0, 400);
-            gradient.addColorStop(0, 'rgba(34, 211, 238, 0.2)'); 
-            gradient.addColorStop(1, 'rgba(34, 211, 238, 0)');
-
-            new Chart(context, {
-                type: 'line',
-                data: {
-                    labels: ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sab'],
-                    datasets: [{
-                        label: 'Entradas',
-                        data: [500, 1200, 800, 1500, 2000, 1800], // MOCK
-                        borderColor: '#22d3ee', 
-                        backgroundColor: gradient,
-                        tension: 0.4, fill: true,
-                        pointRadius: 0, pointHoverRadius: 4, borderWidth: 2
-                    }]
-                },
-                options: {
-                    responsive: true, maintainAspectRatio: false,
-                    plugins: { legend: { display: false } },
-                    scales: {
-                        x: { display: true, grid: { display: false }, ticks: { color: '#64748b', font: {size: 9} } },
-                        y: { display: false, grid: { display: false } }
-                    }
-                }
-            });
-        }
+        // Inicializa o gráfico de alternância no modo padrão (fluxo)
+        renderizarGrafico();
     }
     
     // Funções de Controle de UI

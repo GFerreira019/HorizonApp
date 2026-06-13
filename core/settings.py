@@ -12,6 +12,7 @@ https://docs.djangoproject.com/en/6.0/ref/settings/
 
 from pathlib import Path
 import os
+from decouple import config
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -27,12 +28,15 @@ STATICFILES_DIRS = [
 # See https://docs.djangoproject.com/en/6.0/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-05w#(y$yuzy9z7^#t86s!u@z_yst*(hk6g_^eft5!8!@y+6$!c'
+SECRET_KEY = config('SECRET_KEY', default='django-insecure-05w#(y$yuzy9z7^#t86s!u@z_yst*(hk6g_^eft5!8!@y+6$!c')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = config('DEBUG', default=True, cast=bool)
 
-ALLOWED_HOSTS = ['*']
+ALLOWED_HOSTS = [config('RENDER_EXTERNAL_HOSTNAME', default='localhost'), '127.0.0.1', 'localhost']
+
+# Origens confiáveis para CSRF (necessário para formulários POST em produção)
+CSRF_TRUSTED_ORIGINS = [f"https://{config('RENDER_EXTERNAL_HOSTNAME', default='localhost')}"]
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
@@ -47,16 +51,27 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    # Necessário pelo django-allauth para o modelo SocialApp/Site
+    'django.contrib.sites',
+    # django-allauth
+    'allauth',
+    'allauth.account',
+    'allauth.socialaccount',
+    'allauth.socialaccount.providers.google',
+    'allauth.socialaccount.providers.facebook',
 ]
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',  # Serve ficheiros estáticos em produção
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    # Requerido pelo django-allauth (v0.56+)
+    'allauth.account.middleware.AccountMiddleware',
 ]
 
 ROOT_URLCONF = 'core.urls'
@@ -64,7 +79,8 @@ ROOT_URLCONF = 'core.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
+        # Aponta para a pasta global de templates (onde ficam os overrides do allauth)
+        'DIRS': [BASE_DIR / 'templates'],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -85,9 +101,19 @@ WSGI_APPLICATION = 'core.wsgi.application'
 
 DATABASES = {
     'default': {
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': config('DB_NAME'),
+        'USER': config('DB_USER'),
+        'PASSWORD': config('DB_PASSWORD'),
+        'HOST': config('DB_HOST'),
+        'PORT': config('DB_PORT', default='5432'),
+    },
+    # ── Temporário: banco antigo para migração de dados ──
+    # Remover este bloco após concluir a migração.
+    'sqlite_old': {
         'ENGINE': 'django.db.backends.sqlite3',
         'NAME': BASE_DIR / 'db.sqlite3',
-    }
+    },
 }
 
 
@@ -128,9 +154,127 @@ DATE_INPUT_FORMATS = [
 ]
 
 
-# Static files (CSS, JavaScript, Images)
-# https://docs.djangoproject.com/en/6.0/howto/static-files/
-
+# Redirecionamentos de autenticação
 LOGIN_REDIRECT_URL = 'dashboard'
+LOGOUT_REDIRECT_URL = 'dashboard'
 
-LOGOUT_REDIRECT_URL = 'login'
+# =============================================================================
+# django-allauth — Autenticação
+# =============================================================================
+
+# Necessário pelo django.contrib.sites (usado pelo allauth para SocialApp)
+SITE_ID = 1
+
+AUTHENTICATION_BACKENDS = [
+    # Backend padrão do Django (necessário para login via Admin e @login_required)
+    'django.contrib.auth.backends.ModelBackend',
+    # Backend do allauth (autenticação por email + social login)
+    'allauth.account.auth_backends.AuthenticationBackend',
+]
+
+# ── Comportamento de conta ──────────────────────────────────
+# API moderna do allauth v65+ (usa email como identificador de login)
+ACCOUNT_LOGIN_METHODS = {'email'}
+ACCOUNT_SIGNUP_FIELDS = ['email*', 'password1*', 'password2*']
+ACCOUNT_EMAIL_VERIFICATION = 'none'  # Simplificado para o MVP
+
+# Configuração de E-mail para Desenvolvimento (Imprime no terminal em vez de tentar enviar)
+EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+
+# Redireciona para o dashboard após login/logout via allauth
+ACCOUNT_LOGIN_REDIRECT_URL = 'dashboard'
+ACCOUNT_LOGOUT_REDIRECT_URL = 'account_login'
+
+# Logout imediato sem página de confirmação
+ACCOUNT_LOGOUT_ON_GET = True
+
+# Formulário customizado de cadastro (coleta Nome, Nascimento e Sexo)
+ACCOUNT_SIGNUP_FORM_CLASS = 'financeiro.forms_auth.CustomSignupForm'
+
+# ── Login Social (OAuth) ────────────────────────────────────
+# Credenciais lidas diretamente do .env — NÃO depende do banco de dados.
+# Isso elimina a necessidade de configurar SocialApp via Django Admin.
+SOCIALACCOUNT_PROVIDERS = {
+    'google': {
+        'APP': {
+            'client_id': config('GOOGLE_CLIENT_ID', default=''),
+            'secret': config('GOOGLE_CLIENT_SECRET', default=''),
+            'key': '',
+        },
+        'SCOPE': ['profile', 'email'],
+        'AUTH_PARAMS': {'access_type': 'online'},
+    },
+    'facebook': {
+        'APP': {
+            'client_id': config('FACEBOOK_CLIENT_ID', default=''),
+            'secret': config('FACEBOOK_CLIENT_SECRET', default=''),
+            'key': '',
+        },
+        'METHOD': 'oauth2',
+        'SCOPE': ['email', 'public_profile'],
+        'FIELDS': ['id', 'email', 'name', 'first_name', 'last_name'],
+        'EXCHANGE_TOKEN': True,
+        'VERSION': 'v18.0',
+    },
+}
+
+# =============================================================================
+# Arquivos de Mídia (uploads de perfil, etc.)
+# =============================================================================
+MEDIA_URL = '/media/'
+MEDIA_ROOT = BASE_DIR / 'media'
+
+# =============================================================================
+# Open Finance — Pluggy
+# =============================================================================
+# Carregue estas variáveis do arquivo .env (copie .env.example → .env).
+# Em produção, configure diretamente nas variáveis de ambiente do servidor.
+# Documentação: https://docs.pluggy.ai
+#
+# ⚠️  ATENÇÃO: usamos config() do python-decouple — NÃO os.environ.get().
+#     os.environ.get() lê apenas variáveis exportadas pelo SO e IGNORA o .env.
+#     config() procura em: 1) variáveis de ambiente do SO → 2) arquivo .env.
+PLUGGY_CLIENT_ID = config('PLUGGY_CLIENT_ID', default='')
+PLUGGY_CLIENT_SECRET = config('PLUGGY_CLIENT_SECRET', default='')
+
+# =============================================================================
+# Logging — Habilita logs do serviço Open Finance no console
+# =============================================================================
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'verbose': {
+            'format': '[{levelname}] {asctime} {module}: {message}',
+            'style': '{',
+        },
+    },
+    'handlers': {
+        'console': {
+            'class': 'logging.StreamHandler',
+            'formatter': 'verbose',
+        },
+    },
+    'loggers': {
+        'financeiro': {
+            'handlers': ['console'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+    },
+}
+
+# =============================================================================
+# Ficheiros Estáticos — Produção (WhiteNoise)
+# =============================================================================
+# collectstatic compila todos os assets para esta pasta, servidos pelo WhiteNoise.
+STATIC_ROOT = BASE_DIR / 'staticfiles'
+
+STORAGES = {
+    'default': {
+        'BACKEND': 'django.core.files.storage.FileSystemStorage',
+    },
+    'staticfiles': {
+        'BACKEND': 'whitenoise.storage.CompressedManifestStaticFilesStorage',
+    },
+}

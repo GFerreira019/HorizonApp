@@ -1,0 +1,66 @@
+{# Bottom Navigation Global (Mobile-First) #}
+{# Regras: FAB sempre destacado (cyan), abas cinza/inativo e cyan/ativo, badge Auditoria depende de qtd_pendente #}
+
+{% with url_name=request.resolver_match.url_name %}
+<nav class="fixed bottom-0 left-0 w-full bg-[#0B1120]/95 backdrop-blur-md border-t border-slate-800 p-2 z-40 pb-5">
+    <div class="grid grid-cols-7 gap-0.5 max-w-md mx-auto relative items-center text-center">
+        
+        <a href="{% url 'dashboard' %}"
+           class="flex flex-col items-center justify-center p-2 {% if url_name == 'dashboard' %}text-cyan-400{% else %}text-slate-500 hover:text-white{% endif %} transition-colors">
+            <i class="bi {% if url_name == 'dashboard' %}bi-grid-fill{% else %}bi-grid{% endif %} text-xl mb-0.5"></i>
+            <span class="text-[10px] tracking-wide {% if url_name == 'dashboard' %}font-bold{% else %}font-medium{% endif %}">Painel</span>
+        </a>
+        
+        <a href="{% url 'historico_transacoes' %}"
+           class="flex flex-col items-center justify-center p-2 {% if url_name == 'historico_transacoes' %}text-cyan-400{% else %}text-slate-500 hover:text-white{% endif %} transition-colors">
+            <i class="bi bi-arrow-left-right text-xl mb-0.5"></i>
+            <span class="text-[10px] tracking-wide {% if url_name == 'historico_transacoes' %}font-bold{% else %}font-medium{% endif %}">Extrato</span>
+        </a>
+
+        <a href="{% url 'integracoes' %}"
+           class="flex flex-col items-center justify-center p-2 {% if url_name == 'integracoes' %}text-cyan-400{% else %}text-slate-500 hover:text-white{% endif %} transition-colors">
+            <i class="bi {% if url_name == 'integracoes' %}bi-hdd-network-fill{% else %}bi-hdd-network{% endif %} text-xl mb-0.5"></i>
+            <span class="text-[10px] tracking-wide {% if url_name == 'integracoes' %}font-bold{% else %}font-medium{% endif %}">Integrações</span>
+        </a>
+
+        <div class="relative -top-5 flex justify-center z-50">
+            <button type="button"
+                    {% if url_name == 'dashboard' %}onclick="openModal()"{% else %}onclick="location.href='{% url 'dashboard' %}'"{% endif %}
+                    class="h-12 w-12 aspect-square shrink-0 rounded-full bg-cyan-500 hover:bg-cyan-600 border-[3px] border-[#0B1120] flex items-center justify-center text-white text-xl shadow-[0_0_14px_rgba(34,211,238,0.55)] hover:shadow-[0_0_18px_rgba(34,211,238,0.75)] hover:scale-105 active:scale-95 transition-all"
+                    aria-label="Novo Lançamento">
+                <i class="bi bi-plus-lg"></i>
+            </button>
+        </div>
+
+        <a href="{% url 'tela_planejamento' %}"
+           class="flex flex-col items-center justify-center p-2 {% if url_name == 'tela_planejamento' %}text-cyan-400{% else %}text-slate-500 hover:text-white{% endif %} transition-colors">
+            <i class="bi {% if url_name == 'tela_planejamento' %}bi-pie-chart-fill{% else %}bi-pie-chart{% endif %} text-xl mb-0.5"></i>
+            <span class="text-[10px] tracking-wide {% if url_name == 'tela_planejamento' %}font-bold{% else %}font-medium{% endif %}">Planejar</span>
+        </a>
+
+        <a href="#" onclick="alert('Módulo de Simulação Estratégica (Fase 3) em breve!'); return false;"
+           class="flex flex-col items-center justify-center p-2 text-slate-600 hover:text-slate-500 transition-colors">
+            <i class="bi bi-sliders text-xl mb-0.5 opacity-60"></i>
+            <span class="text-[10px] tracking-wide font-medium opacity-60">Simular</span>
+        </a>
+
+        <a href="{% url 'tela_auditoria' %}"
+           class="flex flex-col items-center justify-center p-2 {% if url_name == 'tela_auditoria' %}text-cyan-400{% else %}text-slate-500 hover:text-white{% endif %} transition-colors relative">
+            <span class="relative inline-flex items-center justify-center">
+                <i class="bi {% if url_name == 'tela_auditoria' %}bi-shield-fill-check{% else %}bi-shield-check{% endif %} text-xl mb-0.5"></i>
+
+                {% if qtd_pendente > 0 %}
+                <span class="absolute -top-1 -right-2 flex h-2 w-2 pointer-events-none">
+                    <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                    <span class="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
+                </span>
+                {% endif %}
+            </span>
+
+            <span class="text-[10px] tracking-wide {% if url_name == 'tela_auditoria' %}font-bold{% else %}font-medium{% endif %}">Auditoria</span>
+        </a>
+
+    </div>
+</nav>
+{% endwith %}
+

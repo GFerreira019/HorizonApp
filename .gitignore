@@ -2,6 +2,13 @@
 venv/
 env/
 
+# Arquivos de Ambiente
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
 # Arquivos do Python
 __pycache__/
 *.pyc
@@ -11,3 +18,7 @@ db.sqlite3
 
 # Arquivos de Sistema
 .DS_Store
+
+# Arquivos de Configuração
+.cursorrules
+architecture.md

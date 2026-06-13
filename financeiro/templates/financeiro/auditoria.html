@@ -36,29 +36,49 @@
             </div>
         </div>
         
-        <div class="flex flex-col gap-3 mt-4 bg-[#0f172a] p-3 rounded-xl border border-slate-700/50">
-            <div class="flex items-center gap-3">
-                <div class="flex-1">
-                    <label for="cat-{{ t.id }}" class="sr-only">Selecione a categoria</label>
-                    <select id="cat-{{ t.id }}" class="form-select text-slate-300 w-full select2-audit">
-                        <option value="">Selecione a categoria...</option>
-                        {% for c in categorias %}
-                            {% if c.macro_categoria.tipo == t.categoria.macro_categoria.tipo and 'Classificar' not in c.nome %}
-                                <option value="{{ c.id }}">{{ c.nome }}</option>
-                            {% endif %}
-                        {% endfor %}
-                    </select>
-                </div>
-                
-                <button type="button" id="btn-{{ t.id }}" data-transacao-id="{{ t.id }}" class="btn-auditar h-10 w-10 shrink-0 rounded-lg bg-gradient-teal text-white flex items-center justify-center hover:scale-105 transition-transform shadow-[0_0_15px_rgba(13,148,136,0.4)]" aria-label="Confirmar classificação">
-                    <i class="bi bi-check-lg text-xl pointer-events-none"></i>
-                </button>
+        <div class="flex flex-col gap-2 mt-4 bg-[#0f172a] p-3 rounded-xl border border-slate-700/50">
+
+            {# Select 1: Macro Categoria (linha inteira) #}
+            <div>
+                <label for="macro-{{ t.id }}" class="text-[9px] font-bold text-slate-500 uppercase tracking-wider block mb-1">Macro Categoria</label>
+                <select
+                    id="macro-{{ t.id }}"
+                    class="select-macro-audit w-full bg-[#151e32] border border-slate-700 text-slate-300 text-sm rounded-lg px-3 py-2.5 focus:outline-none focus:border-cyan-500 transition-colors appearance-none cursor-pointer"
+                    data-transacao-id="{{ t.id }}"
+                    data-tipo="{{ t.categoria.macro_categoria.tipo }}">
+                    <option value="">Selecione a macro categoria…</option>
+                </select>
             </div>
 
-            <div class="flex items-center gap-2 px-1 mt-1">
-                <input type="checkbox" id="regra-{{ t.id }}" class="w-4 h-4 rounded border-slate-600 bg-slate-800 text-cyan-500 focus:ring-cyan-500 focus:ring-offset-slate-900 cursor-pointer">
-                <label for="regra-{{ t.id }}" class="text-[11px] text-slate-400 font-medium cursor-pointer hover:text-slate-300 transition-colors">
-                    Aprender regra (sempre categorizar assim)
+            {# Select 2: Subcategoria (linha inteira, nasce desabilitado) #}
+            <div>
+                <label for="cat-{{ t.id }}" class="text-[9px] font-bold text-slate-500 uppercase tracking-wider block mb-1">Subcategoria</label>
+                <select
+                    id="cat-{{ t.id }}"
+                    class="select-categoria-audit w-full bg-[#151e32] border border-slate-700 text-slate-300 text-sm rounded-lg px-3 py-2.5 focus:outline-none focus:border-cyan-500 transition-colors appearance-none cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+                    disabled>
+                    <option value="">Primeiro selecione a macro…</option>
+                </select>
+            </div>
+
+            {# Linha inferior: botão + checkbox #}
+            <div class="flex items-center gap-3 pt-1">
+                <button
+                    type="button"
+                    id="btn-{{ t.id }}"
+                    data-transacao-id="{{ t.id }}"
+                    class="btn-auditar h-10 px-6 shrink-0 rounded-lg bg-gradient-teal text-white text-xs font-bold flex items-center justify-center gap-2 hover:scale-105 transition-transform shadow-[0_0_15px_rgba(13,148,136,0.4)] disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:scale-100"
+                    aria-label="Confirmar classificação"
+                    disabled>
+                    <i class="bi bi-check-lg text-base pointer-events-none"></i>
+                    Confirmar
+                </button>
+
+                <label class="flex items-center gap-2 cursor-pointer flex-1 min-w-0">
+                    <input type="checkbox" id="regra-{{ t.id }}" class="w-4 h-4 shrink-0 rounded border-slate-600 bg-slate-800 accent-cyan-500 cursor-pointer">
+                    <span class="text-[11px] text-slate-400 font-medium hover:text-slate-300 transition-colors leading-tight">
+                        Aprender regra (sempre categorizar assim)
+                    </span>
                 </label>
             </div>
         </div>
@@ -78,148 +98,234 @@
     {% endfor %}
 </main>
 
-<nav class="fixed bottom-0 left-0 w-full bg-[#0B1120]/95 backdrop-blur-md border-t border-slate-800 p-2 z-40 pb-5">
-    <div class="grid grid-cols-5 gap-1 max-w-md mx-auto relative">
-        <a href="{% url 'dashboard' %}" class="flex flex-col items-center justify-center p-2 text-slate-500 hover:text-white transition-colors">
-            <i class="bi bi-grid text-lg mb-0.5"></i>
-            <span class="text-[9px] font-medium">Dashboard</span>
-        </a>
-        
-        <a href="{% url 'historico_transacoes' %}" class="flex flex-col items-center justify-center p-2 text-slate-500 hover:text-white transition-colors">
-            <i class="bi bi-arrow-left-right text-lg mb-0.5"></i>
-            <span class="text-[9px] font-medium">Transações</span>
-        </a>
-
-        <div class="relative -top-8">
-            <a href="{% url 'dashboard' %}" class="h-14 w-14 mx-auto rounded-full bg-gradient-teal border-[5px] border-[#0B1120] flex items-center justify-center text-white text-2xl shadow-[0_0_15px_rgba(13,148,136,0.6)] hover:scale-105 transition-transform" aria-label="Voltar para adicionar">
-                <i class="bi bi-plus-lg"></i>
-            </a>
-        </div>
-
-        <a href="{% url 'importar_extrato' %}" class="flex flex-col items-center justify-center p-2 text-slate-500 hover:text-white transition-colors">
-            <i class="bi bi-cloud-arrow-up text-lg mb-0.5"></i>
-            <span class="text-[9px] font-medium">Importar</span>
-        </a>
-
-        <a href="{% url 'tela_auditoria' %}" class="flex flex-col items-center justify-center p-2 text-cyan-400 relative">
-            <i class="bi bi-shield-fill-check text-lg mb-0.5 shadow-cyan-500/50"></i>
-            <span class="text-[9px] font-bold">Auditoria</span>
-            
-            {% if qtd_pendente > 0 %}
-            <span class="absolute top-1 right-2 flex h-2 w-2">
-                <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-                <span class="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
-            </span>
-            {% endif %}
-        </a>
-    </div>
-</nav>
 {% endblock %}
 
 {% block scripts %}
 <script>
-    /**
-     * Inicializa os componentes e adiciona os event listeners após o DOM estar pronto.
-     */
-    document.addEventListener("DOMContentLoaded", function() {
-        if (typeof jQuery !== 'undefined') {
-            $('.select2-audit').select2({ width: '100%' });
-        }
+    // ─── Dados injetados pelo backend ────────────────────────────────────────
+    const AUDIT_MACROS        = {{ macros_json|safe }};
+    const AUDIT_SUBCATEGORIAS = {{ subcategorias_json|safe }};
 
-        document.querySelectorAll('.btn-auditar').forEach(button => {
-            button.addEventListener('click', function(event) {
-                event.preventDefault(); 
-                
-                const transacaoId = this.getAttribute('data-transacao-id');
-                
-                consolidarIndividual(transacaoId);
-            });
-        });
-    });
-
-    /**
-     * Extrai o Token CSRF dos cookies com segurança.
-     */
+    // ─── Utilitários ─────────────────────────────────────────────────────────
     function getCsrfToken() {
         const value = `; ${document.cookie}`;
         const parts = value.split(`; csrftoken=`);
         if (parts.length === 2) return parts.pop().split(';').shift();
-        
         const hiddenInput = document.querySelector('[name=csrfmiddlewaretoken]');
         return hiddenInput ? hiddenInput.value : '';
     }
 
+    // ─── População de macros ────────────────────────────────────────────────
     /**
-     * Envia os dados para o servidor assincronamente e anima a saída do card.
+     * Preenche o <select> de Macro Categoria conforme o tipo da transação.
+     * Saídas (despesa/reservado) exibem ambos os tipos para permitir
+     * reclassificação direta como reserva/investimento.
+     */
+    function popularMacrosAudit(selectEl, tipoTransacao) {
+        const tiposAceitos = (tipoTransacao === 'despesa' || tipoTransacao === 'reservado')
+            ? ['despesa', 'reservado']
+            : ['receita'];
+
+        selectEl.innerHTML = '<option value="">Selecione a macro categoria…</option>';
+        AUDIT_MACROS
+            .filter(m => tiposAceitos.includes(m.tipo))
+            .forEach(m => {
+                const opt = document.createElement('option');
+                opt.value       = m.id;
+                opt.textContent = m.nome;
+                selectEl.appendChild(opt);
+            });
+    }
+
+    // ─── População de subcategorias ─────────────────────────────────────────
+    /**
+     * Filtra e injeta as subcategorias pertencentes à macro escolhida
+     * no <select> de cat-{transacaoId}. Reativa e atualiza o Select2.
+     */
+    function popularSubcategoriasAudit(transacaoId, macroId) {
+        const selectCat = document.getElementById(`cat-${transacaoId}`);
+        const btnAudit  = document.getElementById(`btn-${transacaoId}`);
+        if (!selectCat || !btnAudit) return;
+
+        // Reseta
+        selectCat.innerHTML = '<option value="">Selecione a subcategoria…</option>';
+        selectCat.disabled  = true;
+        btnAudit.disabled   = true;
+
+        const subs = AUDIT_SUBCATEGORIAS.filter(s => String(s.macro_id) === String(macroId));
+        if (!subs.length) {
+            selectCat.innerHTML = '<option value="">Nenhuma subcategoria disponível</option>';
+            return;
+        }
+
+        subs.forEach(s => {
+            const opt = document.createElement('option');
+            opt.value       = s.id;
+            opt.textContent = s.nome;
+            selectCat.appendChild(opt);
+        });
+        selectCat.disabled = false;
+
+        // Força repintura do Select2 no select de subcategoria
+        if (typeof jQuery !== 'undefined' && $.fn.select2) {
+            $(`#cat-${transacaoId}`).trigger('change');
+        }
+    }
+
+    // ─── Consolidação individual ──────────────────────────────────────────────
+    /**
+     * Lê estritamente #cat-{transacaoId} e envia o payload ao backend.
      */
     async function consolidarIndividual(transacaoId) {
-        const selectBox = document.getElementById(`cat-${transacaoId}`);
-        const checkRegra = document.getElementById(`regra-${transacaoId}`);
-        const btn = document.getElementById(`btn-${transacaoId}`);
-        const categoriaId = selectBox.value;
+        const selectCat   = document.getElementById(`cat-${transacaoId}`);
+        const checkRegra  = document.getElementById(`regra-${transacaoId}`);
+        const btn         = document.getElementById(`btn-${transacaoId}`);
+        const categoriaId = selectCat ? selectCat.value : '';
 
         if (!categoriaId) {
-            $(selectBox).next('.select2-container').find('.select2-selection').css('border-color', '#ef4444');
-            setTimeout(() => {
-                $(selectBox).next('.select2-container').find('.select2-selection').css('border-color', '');
-            }, 2000);
+            if (selectCat) {
+                selectCat.classList.add('border-red-500');
+                setTimeout(() => selectCat.classList.remove('border-red-500'), 2000);
+            }
             return;
         }
 
         const iconeOriginal = btn.innerHTML;
         btn.innerHTML = '<i class="bi bi-arrow-repeat animate-spin"></i>';
-        btn.disabled = true;
-        
+        btn.disabled  = true;
+
         try {
             const response = await fetch(`/auditoria/consolidar/${transacaoId}/`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'X-CSRFToken': getCsrfToken()
+                    'X-CSRFToken': getCsrfToken(),
                 },
-                body: JSON.stringify({ 
-                    'categoria_id': categoriaId,
-                    'criar_regra': checkRegra.checked 
-                })
+                body: JSON.stringify({
+                    categoria_id: categoriaId,
+                    criar_regra:  checkRegra ? checkRegra.checked : false,
+                }),
             });
 
             if (response.ok) {
                 const data = await response.json();
                 const idsParaRemover = data.ids_consolidados || [transacaoId];
-                
+
                 idsParaRemover.forEach(id => {
                     const card = document.getElementById(`card-${id}`);
                     if (card) {
                         card.style.transform = 'scale(0.95) translateY(10px)';
-                        card.style.opacity = '0';
+                        card.style.opacity   = '0';
                         setTimeout(() => card.remove(), 300);
                     }
                 });
-                
-                setTimeout(() => { 
-                    const qtdSpan = document.getElementById('qtd');
+
+                setTimeout(() => {
+                    const qtdSpan    = document.getElementById('qtd');
                     const currentVal = parseInt(qtdSpan.innerText);
-                    const newVal = currentVal - idsParaRemover.length;
-                    
+                    const newVal     = currentVal - idsParaRemover.length;
                     qtdSpan.innerText = newVal > 0 ? newVal : 0;
-                    
-                    if (newVal <= 0) {
-                        location.reload();
-                    }
+                    if (newVal <= 0) location.reload();
                 }, 300);
-                
+
             } else {
                 const data = await response.json();
                 alert(`Erro ao salvar: ${data.mensagem || 'Falha no servidor.'}`);
                 btn.innerHTML = iconeOriginal;
-                btn.disabled = false;
+                btn.disabled  = false;
             }
         } catch (error) {
-            console.error("Network Error:", error);
-            alert("Erro de conexão. Verifique sua internet e tente novamente.");
+            console.error('Network Error:', error);
+            alert('Erro de conexão. Verifique sua internet e tente novamente.');
             btn.innerHTML = iconeOriginal;
-            btn.disabled = false;
+            btn.disabled  = false;
         }
     }
+
+    // ─── Inicialização ────────────────────────────────────────────────────────
+    document.addEventListener('DOMContentLoaded', function () {
+
+        // PASSO 1 — Popula todas as macros ANTES de inicializar o Select2
+        // (o Select2 congela as options no momento da init; popular depois não funciona)
+        document.querySelectorAll('.select-macro-audit').forEach(function (sel) {
+            popularMacrosAudit(sel, sel.dataset.tipo);
+        });
+
+        // PASSO 2 — Inicializa Select2 nos dois tipos de select de auditoria
+        if (typeof jQuery !== 'undefined' && $.fn.select2) {
+            $('.select-macro-audit').select2({
+                width: '100%',
+                placeholder: 'Selecione a macro categoria…',
+            });
+            // O select de subcategoria recebe Select2 mas começa desabilitado;
+            // o Select2 é re-ativado pelo trigger 'change' em popularSubcategoriasAudit.
+            $('.select-categoria-audit').select2({
+                width: '100%',
+                placeholder: 'Primeiro selecione a macro…',
+            });
+        }
+
+        // PASSO 3 — Encadeamento macro → subcategorias
+        // Usa delegação jQuery para capturar tanto o evento nativo quanto o do Select2
+        if (typeof jQuery !== 'undefined') {
+            $(document).on('change', '.select-macro-audit', function () {
+                const transacaoId = $(this).data('transacao-id');
+                const macroId     = $(this).val();
+
+                if (macroId) {
+                    popularSubcategoriasAudit(transacaoId, macroId);
+                } else {
+                    const selectCat = document.getElementById(`cat-${transacaoId}`);
+                    const btnAudit  = document.getElementById(`btn-${transacaoId}`);
+                    if (selectCat) {
+                        selectCat.innerHTML = '<option value="">Primeiro selecione a macro…</option>';
+                        selectCat.disabled  = true;
+                        $(`#cat-${transacaoId}`).trigger('change');
+                    }
+                    if (btnAudit) btnAudit.disabled = true;
+                }
+            });
+        } else {
+            // Fallback sem jQuery: event delegation nativa
+            document.addEventListener('change', function (e) {
+                if (!e.target.classList.contains('select-macro-audit')) return;
+                const transacaoId = e.target.getAttribute('data-transacao-id');
+                const macroId     = e.target.value;
+                if (macroId) {
+                    popularSubcategoriasAudit(transacaoId, macroId);
+                } else {
+                    const selectCat = document.getElementById(`cat-${transacaoId}`);
+                    const btnAudit  = document.getElementById(`btn-${transacaoId}`);
+                    if (selectCat) { selectCat.innerHTML = '<option value="">Primeiro selecione a macro…</option>'; selectCat.disabled = true; }
+                    if (btnAudit)  btnAudit.disabled = true;
+                }
+            });
+        }
+
+        // PASSO 4 — Habilita botão ao selecionar subcategoria
+        // Usa delegação jQuery para capturar o evento disparado pelo Select2
+        if (typeof jQuery !== 'undefined') {
+            $(document).on('change', '.select-categoria-audit', function () {
+                const id  = this.id.replace('cat-', '');
+                const btn = document.getElementById(`btn-${id}`);
+                if (btn) btn.disabled = !$(this).val();
+            });
+        } else {
+            document.addEventListener('change', function (e) {
+                if (!e.target.classList.contains('select-categoria-audit')) return;
+                const id  = e.target.id.replace('cat-', '');
+                const btn = document.getElementById(`btn-${id}`);
+                if (btn) btn.disabled = !e.target.value;
+            });
+        }
+
+        // PASSO 5 — Delegação dos botões de confirmar
+        document.querySelectorAll('.btn-auditar').forEach(function (button) {
+            button.addEventListener('click', function (event) {
+                event.preventDefault();
+                consolidarIndividual(this.getAttribute('data-transacao-id'));
+            });
+        });
+    });
 </script>
-{% endblock %}
+{% endblock %}
