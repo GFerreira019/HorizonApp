@@ -37,8 +37,43 @@ PASSOS PARA ATIVAR CELERY:
 """
 import logging
 from typing import Optional
+from datetime import date, timedelta
+from financeiro.models import DespesaFixa, Transacao
+from financeiro.telegram_bot import enviar_mensagem_telegram
 
 logger = logging.getLogger(__name__)
+
+def verificar_vencimentos_proximos():
+    """
+    Varre o banco de dados em busca de contas a vencer daqui a 3 dias.
+    Se a conta não foi paga no mês atual, envia um alerta pelo Telegram.
+    Deve ser executado diariamente via Cron ou Celery.
+    """
+    hoje = date.today()
+    daqui_a_3_dias = hoje + timedelta(days=3)
+    dia_alvo = daqui_a_3_dias.day
+    
+    despesas_quase_vencendo = DespesaFixa.objects.filter(ativo=True, dia_vencimento=dia_alvo)
+    
+    for despesa in despesas_quase_vencendo:
+        usuario = despesa.usuario
+        perfil = getattr(usuario, 'perfil', None)
+        telegram_chat_id = perfil.telegram_chat_id if perfil else None
+        
+        if not telegram_chat_id:
+            continue
+            
+        # Verifica se já há transação paga para esta despesa este mês
+        pago_este_mes = Transacao.objects.filter(
+            despesa_fixa=despesa,
+            data__year=hoje.year,
+            data__month=hoje.month,
+            pago=True
+        ).exists()
+        
+        if not pago_este_mes:
+            msg = f"🔔 <b>Lembrete de Vencimento!</b>\n\nA sua conta <b>{despesa.nome}</b> vence dia {dia_alvo}.\nValor previsto: R$ {despesa.valor_previsto}"
+            enviar_mensagem_telegram(telegram_chat_id, msg, parse_mode='HTML')
 
 # TODO: Descomentar quando Celery for instalado no projeto.
 # from celery import shared_task

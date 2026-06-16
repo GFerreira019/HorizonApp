@@ -1,7 +1,11 @@
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 from django.conf import settings
-from .models import MacroCategoria, Categoria, PerfilUsuario
+from django.db.models import Sum
+from datetime import date
+import threading
+from .models import MacroCategoria, Categoria, PerfilUsuario, Transacao, OrcamentoCategoria
+from .telegram_bot import enviar_mensagem_telegram
 
 # Dicionário de Ícones para cada MacroCategoria
 ICONES_MACRO = {
@@ -78,3 +82,62 @@ def criar_perfil_usuario(sender, instance, created, **kwargs):
         PerfilUsuario.objects.create(usuario=instance)
     else:
         PerfilUsuario.objects.get_or_create(usuario=instance)
+
+
+def verificar_orcamento_em_background(transacao_id):
+    """
+    Verifica se a soma dos gastos de uma MacroCategoria ultrapassa o orçamento
+    planejado para o mês e, se for o caso, envia notificação no Telegram.
+    """
+    try:
+        transacao = Transacao.objects.select_related('categoria__macro_categoria', 'usuario').get(id=transacao_id)
+    except Transacao.DoesNotExist:
+        return
+        
+    macro = transacao.categoria.macro_categoria
+    if macro.tipo != 'despesa':
+        return
+        
+    hoje = date.today()
+    # Verifica se existe orçamento para esta macrocategoria no mês atual
+    orcamento = OrcamentoCategoria.objects.filter(
+        planejamento__usuario=transacao.usuario,
+        planejamento__mes=hoje.month,
+        planejamento__ano=hoje.year,
+        macro_categoria=macro
+    ).first()
+    
+    if not orcamento or orcamento.valor_planejado <= 0:
+        return
+        
+    # Calcula soma dos gastos da macrocategoria no mês
+    total_gasto = Transacao.objects.filter(
+        usuario=transacao.usuario,
+        categoria__macro_categoria=macro,
+        data__year=hoje.year,
+        data__month=hoje.month
+    ).aggregate(total=Sum('valor'))['total'] or 0
+    
+    percentual = (total_gasto / orcamento.valor_planejado) * 100
+    
+    usuario = transacao.usuario
+    perfil = getattr(usuario, 'perfil', None)
+    telegram_chat_id = perfil.telegram_chat_id if perfil else None
+    
+    if not telegram_chat_id:
+        return
+        
+    if percentual > 100:
+        msg = f"🚨 <b>Orçamento Estourado!</b>\n\nA sua categoria <b>{macro.nome}</b> ultrapassou o limite orçado.\nOrçado: R$ {orcamento.valor_planejado:.2f}\nGasto: R$ {total_gasto:.2f} ({percentual:.1f}%)"
+        enviar_mensagem_telegram(telegram_chat_id, msg, parse_mode='HTML')
+    elif percentual >= 90:
+        msg = f"⚠️ <b>Orçamento em Risco!</b>\n\nA sua categoria <b>{macro.nome}</b> atingiu {percentual:.1f}% do orçado.\nOrçado: R$ {orcamento.valor_planejado:.2f}\nGasto: R$ {total_gasto:.2f} ({percentual:.1f}%)"
+        enviar_mensagem_telegram(telegram_chat_id, msg, parse_mode='HTML')
+
+
+@receiver(post_save, sender=Transacao)
+def transacao_post_save(sender, instance, created, **kwargs):
+    """
+    Quando uma Transação é salva, dispara a verificação do orçamento de forma assíncrona.
+    """
+    threading.Thread(target=verificar_orcamento_em_background, args=(instance.id,), daemon=True).start()

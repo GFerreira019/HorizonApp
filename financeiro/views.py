@@ -773,16 +773,16 @@ def telegram_webhook(request: HttpRequest) -> JsonResponse:
                 User = get_user_model()
                 user = User.objects.get(pk=user_id)
                 
-                perfil = getattr(user, 'perfil', None)
-                if perfil:
-                    perfil.telegram_chat_id = str(chat_id)
-                    perfil.save(update_fields=['telegram_chat_id'])
+                from .models import PerfilUsuario
+                perfil, created = PerfilUsuario.objects.get_or_create(usuario=user)
+                perfil.telegram_chat_id = str(chat_id)
+                perfil.save(update_fields=['telegram_chat_id'])
                     
-                    enviar_mensagem_telegram(
-                        str(chat_id),
-                        "✅ A tua conta foi vinculada com sucesso ao HorizonAPP! A partir de agora vais receber notificações aqui.",
-                        parse_mode=''
-                    )
+                enviar_mensagem_telegram(
+                    str(chat_id),
+                    "✅ A tua conta foi vinculada com sucesso ao HorizonAPP! A partir de agora vais receber notificações aqui.",
+                    parse_mode=''
+                )
             except (signing.BadSignature, signing.SignatureExpired, User.DoesNotExist):
                 logger.warning('Webhook Telegram: Token inválido, expirado ou utilizador inexistente.')
     except Exception as e:
@@ -797,11 +797,10 @@ def desconectar_telegram(request: HttpRequest) -> HttpResponse:
     Desvincula a conta do Telegram do utilizador.
     """
     if request.method == 'POST':
-        perfil = getattr(request.user, 'perfil', None)
-        if perfil:
-            perfil.telegram_chat_id = None
-            perfil.save(update_fields=['telegram_chat_id'])
-            messages.success(request, "Integração com o Telegram removida com sucesso.")
+        if hasattr(request.user, 'perfil'):
+            request.user.perfil.telegram_chat_id = None
+            request.user.perfil.save(update_fields=['telegram_chat_id'])
+        messages.success(request, "Notificações do Telegram desativadas.")
     return redirect('integracoes')
 
 
