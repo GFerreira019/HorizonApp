@@ -15,11 +15,16 @@ from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.db.models import Sum, Q
 from django.utils import timezone
+from django.core import signing
+from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.http import require_POST
+from django.contrib.auth import get_user_model
 
 from financeiro.signals import ICONES_MACRO
 
 # Imports locais
-from .services import processar_extrato_nubank, sincronizar_transacoes_open_finance, PluggyAPIClient
+from .services import processar_extrato_nubank, sincronizar_transacoes_open_finance, PluggyAPIClient, verificar_limite_e_notificar
+from .telegram_bot import enviar_mensagem_telegram
 from .models import (
     Transacao,
     Categoria,
@@ -150,6 +155,9 @@ def dashboard(request: HttpRequest) -> HttpResponse:
                             usuario=user
                         ).update(despesa_fixa=nova_despesa)
                 
+            # Gatilho Telegram: verifica limites/orçamentos após nova transação manual
+            verificar_limite_e_notificar(transacao)
+
             messages.success(request, 'Lançamento adicionado com sucesso!')
             return redirect('dashboard')
         else:
@@ -727,6 +735,74 @@ def integracoes(request: HttpRequest) -> HttpResponse:
         'pluggy_client_id': getattr(django_settings, 'PLUGGY_CLIENT_ID', ''),
     }
     return render(request, 'financeiro/integracoes.html', context)
+
+
+@login_required
+def conectar_telegram(request: HttpRequest) -> HttpResponse:
+    """
+    Gera um deep link seguro para o usuário vincular sua conta ao bot do Telegram.
+    Usa signing.dumps para gerar um token assinado com o ID do usuário.
+    """
+    # Gera o token assinado contendo o ID do usuário
+    token = signing.dumps(request.user.pk)
+    
+    bot_username = "HorizonApp_Notify_Bot"
+    
+    # Deep link do Telegram que já abre a conversa enviando o comando /start com o token
+    url = f"https://t.me/{bot_username}?start={token}"
+    
+    return redirect(url)
+
+
+@csrf_exempt
+@require_POST
+def telegram_webhook(request: HttpRequest) -> JsonResponse:
+    """
+    Recebe a resposta da API do Telegram (Webhook) para vincular a conta do utilizador.
+    """
+    try:
+        data = json.loads(request.body)
+        message = data.get('message', {})
+        chat_id = message.get('chat', {}).get('id')
+        text = message.get('text', '')
+
+        if text.startswith('/start '):
+            token = text.split(' ', 1)[1]
+            try:
+                user_id = signing.loads(token, max_age=3600)
+                User = get_user_model()
+                user = User.objects.get(pk=user_id)
+                
+                perfil = getattr(user, 'perfil', None)
+                if perfil:
+                    perfil.telegram_chat_id = str(chat_id)
+                    perfil.save(update_fields=['telegram_chat_id'])
+                    
+                    enviar_mensagem_telegram(
+                        str(chat_id),
+                        "✅ A tua conta foi vinculada com sucesso ao HorizonAPP! A partir de agora vais receber notificações aqui.",
+                        parse_mode=''
+                    )
+            except (signing.BadSignature, signing.SignatureExpired, User.DoesNotExist):
+                logger.warning('Webhook Telegram: Token inválido, expirado ou utilizador inexistente.')
+    except Exception as e:
+        logger.error(f'Erro no webhook do telegram: {e}')
+        
+    return JsonResponse({'status': 'ok'})
+
+
+@login_required
+def desconectar_telegram(request: HttpRequest) -> HttpResponse:
+    """
+    Desvincula a conta do Telegram do utilizador.
+    """
+    if request.method == 'POST':
+        perfil = getattr(request.user, 'perfil', None)
+        if perfil:
+            perfil.telegram_chat_id = None
+            perfil.save(update_fields=['telegram_chat_id'])
+            messages.success(request, "Integração com o Telegram removida com sucesso.")
+    return redirect('integracoes')
 
 
 @login_required

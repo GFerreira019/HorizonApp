@@ -18,9 +18,12 @@ from django.contrib import admin
 from django.urls import path, include
 from django.conf import settings
 from django.conf.urls.static import static
+from financeiro import views as financeiro_views
 
 urlpatterns = [
     path('admin/', admin.site.urls),
+    path('api/telegram/conectar/', financeiro_views.conectar_telegram, name='conectar_telegram'),
+    path('api/webhooks/telegram/', financeiro_views.telegram_webhook, name='telegram_webhook'),
     # django-allauth: substitui django.contrib.auth.urls e adiciona social login
     path('accounts/', include('allauth.urls')),
     path('', include('financeiro.urls')),  # Dashboard como Home

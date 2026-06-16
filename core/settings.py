@@ -238,6 +238,15 @@ PLUGGY_CLIENT_ID = config('PLUGGY_CLIENT_ID', default='')
 PLUGGY_CLIENT_SECRET = config('PLUGGY_CLIENT_SECRET', default='')
 
 # =============================================================================
+# Telegram Bot — Notificações Push
+# =============================================================================
+# Token HTTP API obtido via @BotFather no Telegram.
+# Em produção, configure diretamente nas variáveis de ambiente do servidor.
+# ⚠️  NUNCA exponha este token no frontend ou em logs.
+TELEGRAM_BOT_TOKEN = config('TELEGRAM_BOT_TOKEN', default='')
+TELEGRAM_BOT_USERNAME = config('TELEGRAM_BOT_USERNAME', default='HorizonApp Bot')
+
+# =============================================================================
 # Logging — Habilita logs do serviço Open Finance no console
 # =============================================================================
 LOGGING = {
@@ -277,4 +286,4 @@ STORAGES = {
     'staticfiles': {
         'BACKEND': 'whitenoise.storage.CompressedManifestStaticFilesStorage',
     },
-}
+}

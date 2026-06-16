@@ -22,6 +22,9 @@ urlpatterns = [
     # Hub de Integrações (Open Finance + CSV) — antiga rota /importar/
     path('integracoes/', views.integracoes, name='integracoes'),
     path('integracoes/excluir-lote/<int:pk>/', views.excluir_lote, name='excluir_lote'),
+    # Integração Telegram
+    path('telegram/conectar/', views.conectar_telegram, name='conectar_telegram'),
+    path('telegram/desconectar/', views.desconectar_telegram, name='desconectar_telegram'),
     # Redirect de retrocompatibilidade: /importar/ → /integracoes/
     path('importar/', RedirectView.as_view(pattern_name='integracoes', permanent=True), name='importar_extrato'),
     path('auditoria/', views.tela_auditoria, name='tela_auditoria'),

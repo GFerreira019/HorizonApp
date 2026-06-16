@@ -8,11 +8,14 @@ from typing import Tuple, Dict, Any, List, Optional
 
 from django.conf import settings
 from django.db import transaction
+from django.db.models import Sum
 from django.utils import timezone
 from .models import (
     Transacao, Categoria, MacroCategoria, RegraClassificacao,
-    LoteImportacao, ConexaoBancaria,
+    LoteImportacao, ConexaoBancaria, LimiteTemporario,
+    OrcamentoCategoria, PlanejamentoMensal,
 )
+from . import telegram_bot
 
 logger = logging.getLogger(__name__)
 
@@ -130,10 +133,146 @@ def processar_extrato_nubank(arquivo_csv: Any, usuario: Any) -> Dict[str, int]:
             estatisticas['novos'] += 1
             if status == Transacao.StatusAuditoria.CONSOLIDADO:
                 estatisticas['categorias_automaticas'] += 1
+            # Gatilho Telegram: verifica limites/orçamentos após nova transação
+            verificar_limite_e_notificar(transacao)
         else:
             estatisticas['duplicados'] += 1
 
     return estatisticas
+
+
+# =============================================================================
+# Gatilho de Notificações — Verificação de Limites e Orçamentos
+# =============================================================================
+
+def verificar_limite_e_notificar(transacao: 'Transacao') -> None:
+    """
+    Verifica se uma nova transação compromete Limites Temporários ou Orçamentos
+    de Categoria do utilizador, e dispara notificações via Telegram se necessário.
+
+    Essa função deve ser chamada APÓS cada transação ser salva com sucesso no BD.
+    É fail-safe: erros de notificação são logados mas nunca propagados.
+
+    Regras de negócio:
+        1. Limites Temporários:
+           - Calcula o valor_consumido real (soma das transações no período/categoria).
+           - Dispara alerta quando ≥ 80% ou ≥ 100% do limite.
+           - Marca `notificacao_enviada=True` para evitar alertas duplicados.
+
+        2. Orçamento por Categoria (PlanejamentoMensal):
+           - Compara o gasto real do mês na MacroCategoria com o valor planejado.
+           - Dispara alerta quando o gasto real ultrapassa o orçamento.
+
+    Args:
+        transacao: Instância de Transacao já salva no banco de dados.
+    """
+    usuario = transacao.usuario
+
+    # Apenas despesas disparam alertas (receitas não comprometem limites)
+    try:
+        macro_tipo = transacao.categoria.macro_categoria.tipo
+    except Exception:  # noqa: BLE001
+        return
+
+    if macro_tipo != 'despesa':
+        return
+
+    # ── 1. Verificar Limites Temporários ──────────────────────────────────
+    try:
+        limites_ativos = LimiteTemporario.objects.ativos_para_usuario(usuario)
+
+        for limite in limites_ativos:
+            # Limites já notificados são ignorados
+            if limite.notificacao_enviada:
+                continue
+
+            # Verifica escopo: global (categoria_alvo=None) ou por categoria
+            if limite.categoria_alvo_id and limite.categoria_alvo_id != transacao.categoria_id:
+                continue
+
+            # Recalcula valor_consumido real a partir das transações no período
+            filtro_consumo = Transacao.objects.filter(
+                usuario=usuario,
+                data__gte=limite.data_inicio,
+                data__lte=limite.data_fim,
+                categoria__macro_categoria__tipo='despesa',
+            )
+            if limite.categoria_alvo_id:
+                filtro_consumo = filtro_consumo.filter(categoria=limite.categoria_alvo)
+
+            soma = filtro_consumo.aggregate(
+                total=Sum('valor')
+            )['total'] or Decimal('0.00')
+
+            # Atualiza o valor_consumido no modelo para consistência do dashboard
+            LimiteTemporario.objects.filter(pk=limite.pk).update(valor_consumido=soma)
+
+            # Recarrega para propriedades calculadas
+            limite.refresh_from_db()
+
+            # Threshold: notifica a partir de 80% de consumo
+            if limite.percentual_consumido >= 80:
+                sucesso = telegram_bot.notificar_limite_excedido(
+                    usuario=usuario,
+                    limite=limite,
+                    transacao_descricao=transacao.descricao,
+                    transacao_valor=transacao.valor,
+                )
+                if sucesso:
+                    LimiteTemporario.objects.filter(pk=limite.pk).update(
+                        notificacao_enviada=True,
+                    )
+                    logger.info(
+                        'Alerta de limite enviado para user=%s, limite=%s (%.1f%%)',
+                        usuario.pk, limite.pk, limite.percentual_consumido,
+                    )
+
+    except Exception as exc:  # noqa: BLE001
+        logger.error('Erro ao verificar limites temporários para user=%s: %s', usuario.pk, exc)
+
+    # ── 2. Verificar Orçamento de Categoria ───────────────────────────────
+    try:
+        hoje = transacao.data
+        planejamento = PlanejamentoMensal.objects.filter(
+            usuario=usuario,
+            mes=hoje.month,
+            ano=hoje.year,
+        ).first()
+
+        if planejamento:
+            macro_cat = transacao.categoria.macro_categoria
+            orcamento = OrcamentoCategoria.objects.filter(
+                planejamento=planejamento,
+                macro_categoria=macro_cat,
+            ).first()
+
+            if orcamento and orcamento.valor_planejado > 0:
+                # Soma real de gastos na MacroCategoria neste mês
+                gasto_real = Transacao.objects.filter(
+                    usuario=usuario,
+                    data__month=hoje.month,
+                    data__year=hoje.year,
+                    categoria__macro_categoria=macro_cat,
+                ).aggregate(
+                    total=Sum('valor')
+                )['total'] or Decimal('0.00')
+
+                if gasto_real > orcamento.valor_planejado:
+                    telegram_bot.notificar_orcamento_excedido(
+                        usuario=usuario,
+                        macro_nome=macro_cat.nome,
+                        valor_planejado=orcamento.valor_planejado,
+                        valor_realizado=gasto_real,
+                        transacao_descricao=transacao.descricao,
+                        transacao_valor=transacao.valor,
+                    )
+                    logger.info(
+                        'Alerta de orçamento enviado para user=%s, macro=%s (R$ %.2f / R$ %.2f)',
+                        usuario.pk, macro_cat.nome, gasto_real, orcamento.valor_planejado,
+                    )
+
+    except Exception as exc:  # noqa: BLE001
+        logger.error('Erro ao verificar orçamento para user=%s: %s', usuario.pk, exc)
 
 
 # =============================================================================
@@ -432,6 +571,8 @@ def sincronizar_transacoes_open_finance(
                             'Nova transação Open Finance: %s | %s | R$ %s',
                             dados['id'], dados['descricao'], dados['valor_absoluto'],
                         )
+                        # Gatilho Telegram: verifica limites/orçamentos após nova transação
+                        verificar_limite_e_notificar(transacao)
                     else:
                         estatisticas['duplicados'] += 1
 

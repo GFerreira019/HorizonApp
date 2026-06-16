@@ -250,6 +250,54 @@
 </section>
 
 
+{# ══════════════════════════════════════════════════════════════════════════ #}
+{# CARD 3 — NOTIFICAÇÕES VIA TELEGRAM                                        #}
+{# ══════════════════════════════════════════════════════════════════════════ #}
+<section class="mb-5">
+    <div class="bg-[#151e32] border border-slate-800 rounded-2xl overflow-hidden shadow-[0_0_30px_rgba(56,189,248,0.03)] hover:border-slate-700 transition-colors">
+        <div class="px-5 pt-5 pb-4 border-b border-slate-800/80 flex items-center justify-between gap-3">
+            <div class="flex items-center gap-3 min-w-0">
+                <div class="h-9 w-9 rounded-xl bg-sky-500/10 border border-sky-500/20 flex items-center justify-center shrink-0">
+                    <i class="bi bi-telegram text-sky-400"></i>
+                </div>
+                <div class="min-w-0">
+                    <h2 class="text-sm font-bold text-slate-200 leading-tight">Notificações via Telegram</h2>
+                    <p class="text-[10px] text-slate-500 mt-0.5">Alertas no seu bolso</p>
+                </div>
+            </div>
+            {% if request.user.perfil.telegram_chat_id %}
+            <span class="shrink-0 text-[10px] font-bold uppercase tracking-widest bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2.5 py-1 rounded-full whitespace-nowrap">
+                <i class="bi bi-check-circle-fill mr-1"></i> Conectado
+            </span>
+            {% endif %}
+        </div>
+
+        <div class="p-5">
+            <p class="text-xs text-slate-400 mb-5 leading-relaxed">
+                Receba alertas instantâneos de limites temporários de gastos ultrapassados e avisos automáticos de vencimento de despesas fixas direto no seu bolso.
+            </p>
+
+            {% if not request.user.perfil.telegram_chat_id %}
+            <a href="{% url 'conectar_telegram' %}"
+               class="w-full flex items-center justify-center gap-2 bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold py-2.5 px-4 rounded-xl text-xs uppercase tracking-widest border border-slate-700 transition-all active:scale-[0.98]">
+                <i class="bi bi-link-45deg text-lg"></i>
+                Conectar Telegram
+            </a>
+            {% else %}
+            <form action="{% url 'desconectar_telegram' %}" method="post">
+                {% csrf_token %}
+                <button type="submit"
+                        class="w-full flex items-center justify-center gap-2 border border-red-500/20 text-red-400 hover:bg-red-500/10 font-bold py-2.5 px-4 rounded-xl text-xs uppercase tracking-widest transition-all active:scale-[0.98]">
+                    <i class="bi bi-x-circle"></i>
+                    Desconectar
+                </button>
+            </form>
+            {% endif %}
+        </div>
+    </div>
+</section>
+
+
 {# ─── Toast de feedback ──────────────────────────────────────────────────── #}
 <div id="toast-int"
      class="fixed bottom-24 left-1/2 -translate-x-1/2 z-50
