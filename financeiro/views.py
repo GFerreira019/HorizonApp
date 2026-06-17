@@ -780,8 +780,8 @@ def telegram_webhook(request: HttpRequest) -> JsonResponse:
                     
                 enviar_mensagem_telegram(
                     str(chat_id),
-                    "✅ A tua conta foi vinculada com sucesso ao HorizonAPP! A partir de agora vais receber notificações aqui.",
-                    parse_mode=''
+                    "✅ <b>Conta vinculada com sucesso!</b>\n\nA partir de agora, o HorizonAPP irá enviar-lhe notificações inteligentes por aqui.",
+                    parse_mode='HTML'
                 )
             except (signing.BadSignature, signing.SignatureExpired, User.DoesNotExist):
                 logger.warning('Webhook Telegram: Token inválido, expirado ou utilizador inexistente.')
