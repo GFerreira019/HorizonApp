@@ -743,12 +743,11 @@ def conectar_telegram(request: HttpRequest) -> HttpResponse:
     Gera um deep link seguro para o usuário vincular sua conta ao bot do Telegram.
     Usa signing.dumps para gerar um token assinado com o ID do usuário.
     """
-    # Gera o token assinado contendo o ID do usuário
-    token = signing.dumps(request.user.pk)
+    token = signing.dumps(request.user.pk).replace(':', '_')
     
     bot_username = "HorizonApp_Notify_Bot"
     
-    # Deep link do Telegram que já abre a conversa enviando o comando /start com o token
+    # Deep link do Telegram
     url = f"https://t.me/{bot_username}?start={token}"
     
     return redirect(url)
@@ -772,9 +771,13 @@ def telegram_webhook(request: HttpRequest) -> JsonResponse:
             
             # Situação 1: Veio com o token (Deep Linking)
             if len(partes) > 1:
-                token = partes[1]
+                # Recebe o token com '_' e devolve o ':' para o Django reconhecer
+                token_recebido = partes[1]
+                token_django = token_recebido.replace('_', ':')
+                
                 try:
-                    user_id = signing.loads(token, max_age=3600)
+                    # Passa o token restaurado para a validação
+                    user_id = signing.loads(token_django, max_age=3600)
                     User = get_user_model()
                     user = User.objects.get(pk=user_id)
                     
@@ -791,7 +794,6 @@ def telegram_webhook(request: HttpRequest) -> JsonResponse:
                 except (signing.BadSignature, signing.SignatureExpired, User.DoesNotExist):
                     logger.warning('Webhook Telegram: Token inválido, expirado ou utilizador inexistente.')
                     enviar_mensagem_telegram(str(chat_id), "❌ O seu link de vinculação expirou ou é inválido. Gere um novo no HorizonAPP.")
-            
             # Situação 2: Veio sem token (Usuário apenas clicou em "Começar")
             else:
                 enviar_mensagem_telegram(
