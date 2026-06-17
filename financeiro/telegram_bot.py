@@ -57,7 +57,7 @@ def _escape_markdown_v2(text: str) -> str:
 def enviar_mensagem_telegram(
     chat_id: str,
     mensagem: str,
-    parse_mode: str = 'MarkdownV2',
+    parse_mode: str = 'HTML',
 ) -> bool:
     """
     Envia uma mensagem de texto para um chat do Telegram.
@@ -138,18 +138,6 @@ def notificar_limite_excedido(
     transacao_descricao: str,
     transacao_valor: Decimal,
 ) -> bool:
-    """
-    Envia alerta quando uma transação compromete um Limite Temporário de Gasto.
-
-    Args:
-        usuario: Instância do User Django.
-        limite: Instância de LimiteTemporario que foi violado/comprometido.
-        transacao_descricao: Descrição da transação que disparou o alerta.
-        transacao_valor: Valor da transação.
-
-    Returns:
-        True se a notificação foi enviada com sucesso.
-    """
     chat_id = _obter_chat_id_usuario(usuario)
     if not chat_id:
         return False
@@ -159,26 +147,26 @@ def notificar_limite_excedido(
 
     if pct >= 100:
         emoji = '🚨'
-        status = 'EXCEDIDO'
+        status = '<b>EXCEDIDO</b>'
     else:
         emoji = '⚠️'
-        status = f'{pct}% consumido'
+        status = f'<b>{pct}%</b> consumido'
 
-    # Mensagem em texto plano (sem MarkdownV2 para evitar problemas de escape)
+    # Usando formatação HTML básica
     mensagem = (
-        f'{emoji} ALERTA DE LIMITE — HorizonAPP\n'
+        f'{emoji} <b>ALERTA DE LIMITE — HorizonAPP</b>\n'
         f'━━━━━━━━━━━━━━━━━━━━━━━━━━\n'
         f'📌 Limite: {alvo}\n'
         f'💰 Teto: R$ {limite.valor_limite:.2f}\n'
         f'📊 Consumido: R$ {limite.valor_consumido:.2f} ({status})\n'
         f'━━━━━━━━━━━━━━━━━━━━━━━━━━\n'
-        f'🧾 Transação: {transacao_descricao}\n'
+        f'🧾 Transação: <i>{transacao_descricao}</i>\n'
         f'💸 Valor: R$ {transacao_valor:.2f}\n'
         f'━━━━━━━━━━━━━━━━━━━━━━━━━━\n'
         f'Acesse o app para mais detalhes.'
     )
 
-    return enviar_mensagem_telegram(chat_id, mensagem, parse_mode='')
+    return enviar_mensagem_telegram(chat_id, mensagem)
 
 
 def notificar_orcamento_excedido(
