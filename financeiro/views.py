@@ -762,29 +762,43 @@ def telegram_webhook(request: HttpRequest) -> JsonResponse:
     """
     try:
         data = json.loads(request.body)
+        logger.info(f"PAYLOAD DO TELEGRAM RECEBIDO: {json.dumps(data)}")
         message = data.get('message', {})
         chat_id = message.get('chat', {}).get('id')
         text = message.get('text', '')
 
-        if text.startswith('/start '):
-            token = text.split(' ', 1)[1]
-            try:
-                user_id = signing.loads(token, max_age=3600)
-                User = get_user_model()
-                user = User.objects.get(pk=user_id)
-                
-                from .models import PerfilUsuario
-                perfil, created = PerfilUsuario.objects.get_or_create(usuario=user)
-                perfil.telegram_chat_id = str(chat_id)
-                perfil.save(update_fields=['telegram_chat_id'])
+        if text.startswith('/start'):
+            partes = text.split(' ', 1)
+            
+            # Situação 1: Veio com o token (Deep Linking)
+            if len(partes) > 1:
+                token = partes[1]
+                try:
+                    user_id = signing.loads(token, max_age=3600)
+                    User = get_user_model()
+                    user = User.objects.get(pk=user_id)
                     
+                    from .models import PerfilUsuario
+                    perfil, _ = PerfilUsuario.objects.get_or_create(usuario=user)
+                    perfil.telegram_chat_id = str(chat_id)
+                    perfil.save(update_fields=['telegram_chat_id'])
+                        
+                    enviar_mensagem_telegram(
+                        str(chat_id),
+                        "✅ <b>Conta vinculada com sucesso!</b>\n\nA partir de agora, o HorizonAPP irá enviar-lhe notificações inteligentes por aqui.",
+                        parse_mode='HTML'
+                    )
+                except (signing.BadSignature, signing.SignatureExpired, User.DoesNotExist):
+                    logger.warning('Webhook Telegram: Token inválido, expirado ou utilizador inexistente.')
+                    enviar_mensagem_telegram(str(chat_id), "❌ O seu link de vinculação expirou ou é inválido. Gere um novo no HorizonAPP.")
+            
+            # Situação 2: Veio sem token (Usuário apenas clicou em "Começar")
+            else:
                 enviar_mensagem_telegram(
                     str(chat_id),
-                    "✅ <b>Conta vinculada com sucesso!</b>\n\nA partir de agora, o HorizonAPP irá enviar-lhe notificações inteligentes por aqui.",
+                    "👋 <b>Olá!</b> Para configurar as notificações, por favor, acesse o app HorizonAPP e vá até a área de Integrações.",
                     parse_mode='HTML'
                 )
-            except (signing.BadSignature, signing.SignatureExpired, User.DoesNotExist):
-                logger.warning('Webhook Telegram: Token inválido, expirado ou utilizador inexistente.')
     except Exception as e:
         logger.error(f'Erro no webhook do telegram: {e}')
         
