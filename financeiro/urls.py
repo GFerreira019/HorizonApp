@@ -1,8 +1,12 @@
 from django.urls import path
-from django.views.generic import RedirectView
+from django.views.generic import RedirectView, TemplateView
 from . import views
 
 urlpatterns = [
+    # PWA
+    path('manifest.json', TemplateView.as_view(template_name='manifest.json', content_type='application/json'), name='manifest'),
+    path('sw.js', TemplateView.as_view(template_name='sw.js', content_type='application/javascript'), name='sw'),
+
     # Dashboard (Página Inicial)
     path('', views.dashboard, name='dashboard'),
 
@@ -12,6 +16,7 @@ urlpatterns = [
     path('excluir/<int:pk>/', views.excluir_transacao, name='excluir_transacao'),
 
     # APIs (AJAX) para o Frontend
+    path('api/excluir/<int:pk>/', views.excluir_transacao_ajax, name='excluir_transacao_ajax'),
     path('api/toggle-pago/<int:pk>/', views.toggle_pago, name='toggle_pago'),
     path('api/chart-data/', views.get_chart_data, name='get_chart_data'),
     path('api/reclassificar/', views.reclassificar_transacao_ajax, name='reclassificar_transacao_ajax'),

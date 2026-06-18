@@ -95,7 +95,7 @@ def dashboard(request: HttpRequest) -> HttpResponse:
     mes_param = request.GET.get('mes')
     ano_param = int(request.GET.get('ano', today.year))
     
-    query_filtro = Q(usuario=user)
+    query_filtro = Q(usuario=user, ignorado=False)
     periodo_tudo = False
     
     if periodo == 'tudo':
@@ -344,7 +344,7 @@ def historico_transacoes(request: HttpRequest) -> HttpResponse:
         end_date = today
 
     queryset = Transacao.objects.select_related('categoria__macro_categoria').filter(
-        usuario=request.user
+        usuario=request.user, ignorado=False
     ).order_by('-data', '-id')
 
     if start_date and end_date:
@@ -458,6 +458,27 @@ def excluir_transacao(request: HttpRequest, pk: int) -> HttpResponse:
     return redirect('historico_transacoes')
 
 
+@login_required
+@require_POST
+def excluir_transacao_ajax(request: HttpRequest, pk: int) -> JsonResponse:
+    """
+    Exclusão híbrida de transação.
+    Se for importada (identificador presente), faz soft delete (ignorado=True).
+    Caso contrário, deleta fisicamente.
+    """
+    transacao = get_object_or_404(Transacao, pk=pk, usuario=request.user)
+    
+    if transacao.identificador_extrato or transacao.id_transacao_externa:
+        # Soft delete
+        transacao.ignorado = True
+        transacao.save(update_fields=['ignorado'])
+    else:
+        # Hard delete
+        transacao.delete()
+        
+    return JsonResponse({'status': 'success'})
+
+
 # ==============================================================================
 # 3. APIS AJAX & INTEGRAÇÕES
 # ==============================================================================
@@ -489,7 +510,7 @@ def get_chart_data(request: HttpRequest) -> JsonResponse:
     mes = request.GET.get('mes')
     ano = request.GET.get('ano')
     
-    query = Q(usuario=request.user, categoria__macro_categoria__tipo='despesa')
+    query = Q(usuario=request.user, categoria__macro_categoria__tipo='despesa', ignorado=False)
     
     if periodo != 'tudo' and mes and ano:
         query &= Q(data__month=mes, data__year=ano)
@@ -637,7 +658,7 @@ def exportar_financas_excel(request: HttpRequest) -> HttpResponse:
     end_date_str = request.GET.get('end_date')
 
     queryset = Transacao.objects.select_related('categoria__macro_categoria').filter(
-        usuario=request.user
+        usuario=request.user, ignorado=False
     ).order_by('data')
 
     if start_date_str and end_date_str:

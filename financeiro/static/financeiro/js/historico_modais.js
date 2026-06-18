@@ -192,6 +192,64 @@
     }
   });
 
+  // ─── Excluir Transação AJAX ──────────────────────────────────
+  window.excluirTransacaoAtual = async function () {
+    try {
+      console.log("-> Função excluirTransacaoAtual() disparada.");
+      console.log("-> ID atual capturado:", transacaoAtualId);
+
+      if (!transacaoAtualId) {
+        console.error("ERRO: ID da transação não encontrado no escopo do JS!");
+        alert("Erro interno: Transação não identificada.");
+        return;
+      }
+
+      if (!confirm("Tem certeza que deseja excluir esta transação?")) {
+        return;
+      }
+
+      const url = `/api/excluir/${transacaoAtualId}/`;
+      console.log("-> Disparando fetch POST para:", url);
+
+      const resp = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': getCsrfToken(),
+          'X-Requested-With': 'XMLHttpRequest',
+        }
+      });
+
+      if (!resp.ok) {
+        console.error("Erro na requisição. Status:", resp.status);
+        alert("Erro de comunicação com o servidor ao excluir a transação.");
+        return;
+      }
+
+      const data = await resp.json();
+      console.log("-> Resposta da API:", data);
+
+      if (resp.ok && data.status === 'success') {
+        // Remove a linha dinamicamente
+        const btnReclassificar = document.querySelector(`button[data-id="${transacaoAtualId}"]`);
+        if (btnReclassificar) {
+          const row = btnReclassificar.closest('article');
+          if (row) {
+            row.remove();
+            console.log("-> Linha HTML removida com sucesso.");
+          }
+        }
+        
+        fecharModal();
+      } else {
+        alert('Erro ao excluir: ' + (data.mensagem || 'tente novamente.'));
+      }
+    } catch (err) {
+      console.error("ERRO GRAVE no fluxo de exclusão:", err);
+      alert('Falha de conexão ou erro no Javascript. Verifique o console.');
+    }
+  };
+
   // ─── Fechamento do modal ──────────────────────────────────────
   [overlay, btnClose, btnCancelar].forEach(el => {
     el && el.addEventListener('click', fecharModal);

@@ -20,9 +20,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/6.0/howto/static-files/
 STATIC_URL = 'static/'
-STATICFILES_DIRS = [
-    os.path.join('financeiro', 'static'),
-]
+STATICFILES_DIRS = [ BASE_DIR / 'financeiro' / 'static' ]
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/6.0/howto/deployment/checklist/

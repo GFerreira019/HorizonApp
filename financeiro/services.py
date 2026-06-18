@@ -196,6 +196,7 @@ def verificar_limite_e_notificar(transacao: 'Transacao') -> None:
                 data__gte=limite.data_inicio,
                 data__lte=limite.data_fim,
                 categoria__macro_categoria__tipo='despesa',
+                ignorado=False
             )
             if limite.categoria_alvo_id:
                 filtro_consumo = filtro_consumo.filter(categoria=limite.categoria_alvo)
@@ -253,6 +254,7 @@ def verificar_limite_e_notificar(transacao: 'Transacao') -> None:
                     data__month=hoje.month,
                     data__year=hoje.year,
                     categoria__macro_categoria=macro_cat,
+                    ignorado=False
                 ).aggregate(
                     total=Sum('valor')
                 )['total'] or Decimal('0.00')

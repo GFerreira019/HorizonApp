@@ -349,6 +349,7 @@ class Transacao(models.Model):
     pago = models.BooleanField(default=False)
     fixo = models.BooleanField(default=False)
     importada_automatica = models.BooleanField(default=False)
+    ignorado = models.BooleanField(default=False, help_text="Se True, a transação sofreu soft-delete e será ocultada dos cálculos e dashboards.")
     
     lote = models.ForeignKey(LoteImportacao, on_delete=models.CASCADE, null=True, blank=True, related_name='transacoes_lote')
     despesa_fixa = models.ForeignKey(DespesaFixa, on_delete=models.SET_NULL, null=True, blank=True, related_name='transacoes_realizadas')
