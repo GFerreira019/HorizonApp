@@ -4,6 +4,7 @@ from decimal import Decimal
 
 from django.conf import settings
 from django.db import models
+from django.db.models import Q
 from django.utils import timezone
     
 
@@ -71,9 +72,14 @@ class DespesaFixaManager(models.Manager):
     Manager customizado para encapsular lógicas complexas de busca.
     """
     def ativas_na_data(self, data_referencia: date) -> models.QuerySet:
+        """
+        Retorna despesas fixas ativas para uma data de referência.
+        Registros sem data de início (Envelopes/tem_vencimento=False) são sempre incluídos.
+        """
         return self.filter(
             ativo=True,
-            data_inicio__lte=data_referencia
+        ).filter(
+            Q(data_inicio__lte=data_referencia) | Q(data_inicio__isnull=True)
         ).exclude(
             data_fim__lt=data_referencia
         )
@@ -90,7 +96,8 @@ class DespesaFixa(models.Model):
     )
     nome = models.CharField(max_length=100, help_text="Ex: Aluguel, Conta de Luz, Internet")
     valor_previsto = models.DecimalField(max_digits=10, decimal_places=2)
-    dia_vencimento = models.PositiveIntegerField(help_text="Dia do mês (1 a 31)")
+    tem_vencimento = models.BooleanField(default=False)
+    dia_vencimento = models.PositiveIntegerField(null=True, blank=True, help_text="Dia do mês (1 a 31)")
     categoria = models.ForeignKey(Categoria, on_delete=models.CASCADE, related_name='despesas_fixas_vinculadas')
     macro_categoria = models.ForeignKey(
         MacroCategoria,
@@ -98,7 +105,7 @@ class DespesaFixa(models.Model):
         related_name='despesas_fixas',
     )
     ativo = models.BooleanField(default=True, help_text="Desmarque se cancelar este contrato/serviço")
-    data_inicio = models.DateField(default=timezone.now)
+    data_inicio = models.DateField(null=True, blank=True, default=timezone.now)
     data_fim = models.DateField(null=True, blank=True)
 
     objects = DespesaFixaManager()
@@ -125,7 +132,7 @@ class DespesaFixa(models.Model):
     def agrupar_por_macro(cls, despesas) -> dict:
         """
         Agrupa despesas fixas por macro_categoria_id.
-        Retorna {macro_id: {'itens': [{id, nome, valor, categoria_id, categoria_nome}], 'soma': Decimal}}.
+        Retorna {macro_id: {'itens': [{id, nome, valor, categoria_id, categoria_nome, tem_vencimento}], 'soma': Decimal}}.
         """
         grupos = defaultdict(lambda: {'itens': [], 'soma': Decimal('0.00')})
         for despesa in despesas:
@@ -136,6 +143,7 @@ class DespesaFixa(models.Model):
                 'valor': despesa.valor_previsto,
                 'categoria_id': despesa.categoria_id,
                 'categoria_nome': despesa.categoria.nome,
+                'tem_vencimento': despesa.tem_vencimento,
             })
             grupos[macro_id]['soma'] += despesa.valor_previsto
         return dict(grupos)
@@ -146,11 +154,16 @@ class DespesaFixa(models.Model):
 
 class ReceitaPlanejadaManager(models.Manager):
     def ativas_na_data(self, data_referencia: date) -> models.QuerySet:
+        """
+        Retorna receitas planejadas ativas para uma data de referência.
+        Registros sem data de início (Envelopes/tem_vencimento=False) são sempre incluídos.
+        """
         return self.filter(
             ativo=True,
-            data_inicio__lte=data_referencia,
+        ).filter(
+            Q(data_inicio__lte=data_referencia) | Q(data_inicio__isnull=True)
         ).exclude(
-            data_fim__lt=data_referencia,
+            data_fim__lt=data_referencia
         )
 
 
@@ -165,7 +178,8 @@ class ReceitaPlanejada(models.Model):
     )
     nome = models.CharField(max_length=100, help_text="Ex: Salário CLT, Freelance")
     valor_previsto = models.DecimalField(max_digits=10, decimal_places=2)
-    dia_recebimento = models.PositiveIntegerField(default=1, help_text="Dia do mês (1 a 31)")
+    tem_vencimento = models.BooleanField(default=False)
+    dia_recebimento = models.PositiveIntegerField(null=True, blank=True, default=1, help_text="Dia do mês (1 a 31)")
     categoria = models.ForeignKey(
         Categoria,
         on_delete=models.CASCADE,
@@ -177,7 +191,7 @@ class ReceitaPlanejada(models.Model):
         related_name='receitas_planejadas',
     )
     ativo = models.BooleanField(default=True)
-    data_inicio = models.DateField(default=timezone.now)
+    data_inicio = models.DateField(null=True, blank=True, default=timezone.now)
     data_fim = models.DateField(null=True, blank=True)
 
     objects = ReceitaPlanejadaManager()
@@ -202,6 +216,10 @@ class ReceitaPlanejada(models.Model):
 
     @classmethod
     def agrupar_por_macro(cls, receitas) -> dict:
+        """
+        Agrupa receitas planejadas por macro_categoria_id.
+        Retorna {macro_id: {'itens': [{id, nome, valor, categoria_id, categoria_nome, tem_vencimento}], 'soma': Decimal}}.
+        """
         grupos = defaultdict(lambda: {'itens': [], 'soma': Decimal('0.00')})
         for receita in receitas:
             macro_id = receita.macro_categoria_id
@@ -211,6 +229,7 @@ class ReceitaPlanejada(models.Model):
                 'valor': receita.valor_previsto,
                 'categoria_id': receita.categoria_id,
                 'categoria_nome': receita.categoria.nome,
+                'tem_vencimento': receita.tem_vencimento,
             })
             grupos[macro_id]['soma'] += receita.valor_previsto
         return dict(grupos)

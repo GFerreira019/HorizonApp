@@ -93,11 +93,16 @@
 
         lista.innerHTML = itens.map(function (item) {
             var dropdownId = 'dropdown_item_' + tipo + '_' + item.id;
+            // Badge de "Envelope" para registros sem vencimento (tem_vencimento=false)
+            var metaHtml = item.tem_vencimento === false
+                ? '<span class="inline-flex items-center gap-1 text-[9px] font-bold text-slate-400 bg-slate-800 border border-slate-700 px-1.5 py-0.5 rounded-md uppercase tracking-wider mt-0.5">' +
+                  '<i class="bi bi-inbox pointer-events-none"></i> Envelope</span>'
+                : '<p class="text-[10px] text-slate-500 truncate">' + window.escaparHtml(item.categoria_nome || '') + '</p>';
             return (
                 '<div class="flex items-center gap-2 p-3 rounded-xl bg-[#0f172a] border border-slate-800 hover:border-slate-600 transition-colors group">' +
                     '<div class="flex-1 min-w-0">' +
                         '<p class="text-sm font-bold text-slate-200 truncate">' + window.escaparHtml(item.nome) + '</p>' +
-                        '<p class="text-[10px] text-slate-500 truncate">' + window.escaparHtml(item.categoria_nome || '') + '</p>' +
+                        metaHtml +
                     '</div>' +
                     '<span class="text-sm font-bold ' + cores.valor + ' shrink-0 whitespace-nowrap">' +
                         window.formatarMoeda(item.valor) +

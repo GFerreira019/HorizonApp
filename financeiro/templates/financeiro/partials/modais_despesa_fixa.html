@@ -19,24 +19,34 @@
                     <label class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1 block">Nome da Conta</label>
                     <input type="text" name="nome" id="modalNome" class="w-full bg-[#151e32] text-white border border-slate-700 rounded-xl p-3 text-sm focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 outline-none transition-colors" required>
                 </div>
-                <div class="grid grid-cols-2 gap-4">
-                    <div>
-                        <label class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1 block">Valor (R$)</label>
-                        <input type="number" step="0.01" name="valor_previsto" id="modalValor" class="w-full bg-[#151e32] text-white border border-slate-700 rounded-xl p-3 text-sm focus:border-cyan-500 outline-none" required>
-                    </div>
-                    <div>
-                        <label class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1 block">Dia Vencimento</label>
-                        <input type="number" name="dia_vencimento" id="modalDia" class="w-full bg-[#151e32] text-white border border-slate-700 rounded-xl p-3 text-sm focus:border-cyan-500 outline-none" min="1" max="31" required>
-                    </div>
+                <div class="mb-4 flex items-center justify-between bg-slate-800/50 p-3 rounded-xl border border-slate-700 mt-4">
+                    <label for="tem_vencimento_edicao" class="text-sm font-bold text-slate-300">Possui prazos/vencimento?</label>
+                    <label class="relative inline-flex items-center cursor-pointer">
+                        <input type="checkbox" name="tem_vencimento" id="tem_vencimento_edicao" class="sr-only peer">
+                        <div class="w-11 h-6 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-slate-300 after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-cyan-500"></div>
+                    </label>
                 </div>
-                <div class="grid grid-cols-2 gap-4">
-                    <div>
-                        <label class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1 block">Início</label>
-                        <input type="date" name="data_inicio" id="modalInicio" class="w-full bg-[#151e32] text-slate-300 border border-slate-700 rounded-xl p-3 text-sm focus:border-cyan-500 outline-none cursor-text">
+
+                <div id="wrapper-datas-edicao" class="space-y-4 hidden">
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1 block">Valor (R$)</label>
+                            <input type="number" step="0.01" name="valor_previsto" id="modalValor" class="w-full bg-[#151e32] text-white border border-slate-700 rounded-xl p-3 text-sm focus:border-cyan-500 outline-none" required>
+                        </div>
+                        <div>
+                            <label class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1 block">Dia Vencimento</label>
+                            <input type="number" name="dia_vencimento" id="modalDia" class="w-full bg-[#151e32] text-white border border-slate-700 rounded-xl p-3 text-sm focus:border-cyan-500 outline-none" min="1" max="31">
+                        </div>
                     </div>
-                    <div>
-                        <label class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1 block">Fim (Opcional)</label>
-                        <input type="date" name="data_fim" id="modalFim" class="w-full bg-[#151e32] text-slate-300 border border-slate-700 rounded-xl p-3 text-sm focus:border-cyan-500 outline-none cursor-text">
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1 block">Início</label>
+                            <input type="date" name="data_inicio" id="modalInicio" class="w-full bg-[#151e32] text-slate-300 border border-slate-700 rounded-xl p-3 text-sm focus:border-cyan-500 outline-none cursor-text">
+                        </div>
+                        <div>
+                            <label class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1 block">Fim (Opcional)</label>
+                            <input type="date" name="data_fim" id="modalFim" class="w-full bg-[#151e32] text-slate-300 border border-slate-700 rounded-xl p-3 text-sm focus:border-cyan-500 outline-none cursor-text">
+                        </div>
                     </div>
                 </div>
 
@@ -100,9 +110,12 @@
                         <label class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1 block">Valor Previsto (R$)</label>
                         <input type="number" step="0.01" name="valor_previsto" class="w-full bg-[#151e32] text-white border border-slate-700 rounded-xl p-3 text-sm focus:border-cyan-500 outline-none" required>
                     </div>
-                    <div>
-                        <label class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1 block">Dia do Vencimento</label>
-                        <input type="number" name="dia_vencimento" min="1" max="31" class="w-full bg-[#151e32] text-white border border-slate-700 rounded-xl p-3 text-sm focus:border-cyan-500 outline-none" required>
+                    <div class="flex items-center justify-end">
+                        <label for="tem_vencimento_nova" class="text-sm font-bold text-slate-300 mr-3">Possui prazos?</label>
+                        <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" name="tem_vencimento" id="tem_vencimento_nova" class="sr-only peer">
+                            <div class="w-11 h-6 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-slate-300 after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-cyan-500"></div>
+                        </label>
                     </div>
                 </div>
 
@@ -121,14 +134,21 @@
                     </select>
                 </div>
 
-                <div class="grid grid-cols-2 gap-4">
+                <div id="wrapper-datas-nova" class="space-y-4 hidden border-t border-slate-800 pt-4 mt-2">
                     <div>
-                        <label class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1 block">Data de Início</label>
-                        <input type="date" name="data_inicio" class="w-full bg-[#151e32] text-slate-300 border border-slate-700 rounded-xl p-3 text-sm focus:border-cyan-500 outline-none cursor-text" required>
+                        <label class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1 block">Dia do Vencimento</label>
+                        <input type="number" name="dia_vencimento" min="1" max="31" class="w-full bg-[#151e32] text-white border border-slate-700 rounded-xl p-3 text-sm focus:border-cyan-500 outline-none">
                     </div>
-                    <div>
-                        <label class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1 block">Fim (Opcional)</label>
-                        <input type="date" name="data_fim" class="w-full bg-[#151e32] text-slate-300 border border-slate-700 rounded-xl p-3 text-sm focus:border-cyan-500 outline-none cursor-text">
+
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1 block">Data de Início</label>
+                            <input type="date" name="data_inicio" class="w-full bg-[#151e32] text-slate-300 border border-slate-700 rounded-xl p-3 text-sm focus:border-cyan-500 outline-none cursor-text">
+                        </div>
+                        <div>
+                            <label class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1 block">Fim (Opcional)</label>
+                            <input type="date" name="data_fim" class="w-full bg-[#151e32] text-slate-300 border border-slate-700 rounded-xl p-3 text-sm focus:border-cyan-500 outline-none cursor-text">
+                        </div>
                     </div>
                 </div>
 

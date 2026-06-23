@@ -23,7 +23,7 @@ from django.contrib.auth import get_user_model
 from financeiro.signals import ICONES_MACRO
 
 # Imports locais
-from .services import processar_extrato_nubank, sincronizar_transacoes_open_finance, PluggyAPIClient, verificar_limite_e_notificar
+from .services import processar_extrato_nubank, sincronizar_transacoes_open_finance, PluggyAPIClient, verificar_limite_e_notificar, get_envelopes_progresso
 from .telegram_bot import enviar_mensagem_telegram
 from .models import (
     Transacao,
@@ -301,6 +301,8 @@ def dashboard(request: HttpRequest) -> HttpResponse:
         # Dados para os dois modos do gráfico de alternância
         'dados_fluxo_json': json.dumps(dados_fluxo),
         'dados_macros_json': json.dumps(dados_macros),
+        # Dados de progresso de envelopes
+        'envelopes_progresso': get_envelopes_progresso(user, mes, ano_param),
     }
     return render(request, 'financeiro/dashboard.html', context)
 

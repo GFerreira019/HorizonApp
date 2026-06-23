@@ -605,3 +605,138 @@ def sincronizar_transacoes_open_finance(
         conexao.pk, conexao.instituicao_nome, estatisticas,
     )
     return estatisticas
+
+# =============================================================================
+# Módulo de Calendário e Envelopes
+# =============================================================================
+
+def get_despesas_calendario(usuario: Any, mes: int, ano: int) -> List[Dict[str, Any]]:
+    """
+    Retorna todas as despesas fixas ativas do usuário para um dado mês/ano,
+    enriquecidas com o status de pagamento real daquele período.
+    """
+    from datetime import date
+    from .models import DespesaFixa, Transacao
+    
+    data_ref = date(ano, mes, 1)
+    despesas = DespesaFixa.objects.ativas_na_data(data_ref).filter(
+        usuario=usuario,
+        tem_vencimento=True
+    ).only('id', 'nome', 'valor_previsto', 'dia_vencimento')
+
+    ids_pagos: set[int] = set(
+        Transacao.objects.filter(
+            usuario=usuario,
+            despesa_fixa__isnull=False,
+            data__month=mes,
+            data__year=ano,
+            ignorado=False,
+        ).values_list('despesa_fixa_id', flat=True)
+    )
+
+    resultado: List[Dict[str, Any]] = []
+    for despesa in despesas:
+        resultado.append({
+            'id': despesa.id,
+            'nome': despesa.nome,
+            'valor': float(despesa.valor_previsto),
+            'dia_vencimento': despesa.dia_vencimento,
+            'pago': despesa.id in ids_pagos,
+        })
+
+    return resultado
+
+
+def get_proximos_vencimentos(usuario: Any) -> List[Dict[str, Any]]:
+    """
+    Retorna as próximas 3 contas a vencer no mês corrente que ainda não foram pagas.
+    """
+    from datetime import date
+    
+    hoje = date.today()
+    todas = get_despesas_calendario(usuario, hoje.month, hoje.year)
+
+    proximas = [
+        d for d in todas
+        if not d['pago'] and d.get('dia_vencimento') is not None and d['dia_vencimento'] >= hoje.day
+    ]
+    proximas.sort(key=lambda d: d['dia_vencimento'])
+    return proximas[:3]
+
+
+def get_envelopes_progresso(usuario: Any, mes: int, ano: int) -> List[Dict[str, Any]]:
+    """
+    Retorna o progresso dos envelopes de orçamento (DespesaFixa com tem_vencimento=False)
+    ativos para o usuário, cruzando com os gastos reais do mês/ano informado.
+
+    Envelopes não possuem restrição de data por definição — o filtro é direto
+    em tem_vencimento=False e ativo=True, sem usar ativas_na_data(), que pode
+    excluir envelopes criados no meio do mês (data_inicio > 1º do mês).
+    """
+    from django.db.models import Sum
+    from decimal import Decimal
+    from .models import DespesaFixa, Transacao
+
+    # Filtro simples e direto — sem filtros de data que excluem envelopes válidos
+    envelopes = DespesaFixa.objects.filter(
+        usuario=usuario,
+        tem_vencimento=False,
+        ativo=True,
+    ).select_related('categoria', 'macro_categoria')
+
+
+    gastos = Transacao.objects.filter(
+        usuario=usuario,
+        data__month=mes,
+        data__year=ano,
+        ignorado=False,
+    ).values('categoria_id').annotate(total_gasto=Sum('valor'))
+
+    # Dicionário {categoria_id: Decimal(total)} — fallback Decimal para consistência
+    gastos_dict = {
+        item['categoria_id']: item['total_gasto'] or Decimal('0.00')
+        for item in gastos
+    }
+
+    resultado = []
+    for envelope in envelopes:
+        valor_planejado = envelope.valor_previsto  # Decimal do banco
+        valor_gasto = gastos_dict.get(envelope.categoria_id, Decimal('0.00'))
+
+        
+        porcentagem_real = 0
+        porcentagem_barra = 0
+        if valor_planejado > 0:
+            porcentagem_real = (float(valor_gasto) / float(valor_planejado)) * 100
+            porcentagem_barra = min(porcentagem_real, 100)
+
+        valor_restante = float(valor_planejado) - float(valor_gasto)
+        
+        # Cores pré-calculadas para evitar comparadores >= no template Django
+        if porcentagem_real >= 100:
+            cor_barra  = 'bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.5)]'
+            cor_texto  = 'text-red-400'
+            estourado  = True
+        elif porcentagem_real >= 80:
+            cor_barra  = 'bg-amber-400 shadow-[0_0_8px_rgba(251,191,36,0.4)]'
+            cor_texto  = 'text-amber-400'
+            estourado  = False
+        else:
+            cor_barra  = 'bg-cyan-500 shadow-[0_0_8px_rgba(34,211,238,0.4)]'
+            cor_texto  = 'text-cyan-400'
+            estourado  = False
+
+        resultado.append({
+            'nome_envelope': envelope.nome,
+            'categoria_nome': envelope.categoria.nome if envelope.categoria else 'Sem Categoria',
+            'valor_planejado': float(valor_planejado),
+            'valor_gasto': float(valor_gasto),
+            'porcentagem_real': round(porcentagem_real, 1),
+            'porcentagem_barra': round(porcentagem_barra, 2),
+            'valor_restante': valor_restante,
+            'cor_barra': cor_barra,
+            'cor_texto': cor_texto,
+            'estourado': estourado,
+        })
+        
+    return sorted(resultado, key=lambda x: x['nome_envelope'])

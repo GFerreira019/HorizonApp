@@ -196,6 +196,12 @@
         limparCamposReceita();
         setModoEdicao(false, null);
         filtrarCategoriasReceitaPorMacro(macroId, null);
+        
+        var toggleNova = document.getElementById('tem_vencimento_receita');
+        if (toggleNova) {
+            toggleNova.checked = false;
+            toggleNova.dispatchEvent(new Event('change'));
+        }
 
         document.getElementById('modalNovaReceitaPlanejada').classList.remove('hidden');
     };
@@ -249,6 +255,12 @@
                 el = document.getElementById('receitaDataInicio');  if (el) el.value = data.data_inicio || '';
                 el = document.getElementById('receitaDataFim');     if (el) el.value = data.data_fim || '';
                 el = document.getElementById('macroIdNovaReceita'); if (el) el.value = data.macro_categoria_id || '';
+
+                var toggleReceita = document.getElementById('tem_vencimento_receita');
+                if (toggleReceita) {
+                    toggleReceita.checked = data.tem_vencimento;
+                    toggleReceita.dispatchEvent(new Event('change'));
+                }
 
                 filtrarCategoriasReceitaPorMacro(data.macro_categoria_id, data.categoria_id);
 
@@ -408,6 +420,31 @@
         if (inputBusca) {
             inputBusca.addEventListener('input', function (e) {
                 buscarTransacoesReceitaAPI(e.target.value);
+            });
+        }
+        
+        var toggleReceita = document.getElementById('tem_vencimento_receita');
+        var wrapperReceita = document.getElementById('wrapper-datas-receita');
+        var diaReceita = document.getElementById('receitaDia');
+        var inicioReceita = document.getElementById('receitaDataInicio');
+        
+        if (toggleReceita && wrapperReceita) {
+            toggleReceita.addEventListener('change', function() {
+                if (this.checked) {
+                    wrapperReceita.classList.remove('hidden');
+                    if(diaReceita) diaReceita.required = true;
+                    if(inicioReceita) inicioReceita.required = true;
+                } else {
+                    wrapperReceita.classList.add('hidden');
+                    if(diaReceita) {
+                        diaReceita.required = false;
+                        diaReceita.value = '';
+                    }
+                    if(inicioReceita) {
+                        inicioReceita.required = false;
+                        inicioReceita.value = '';
+                    }
+                }
             });
         }
     });

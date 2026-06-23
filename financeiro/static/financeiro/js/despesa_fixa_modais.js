@@ -93,6 +93,13 @@
         }
 
         filtrarCategoriasPorMacro(macroId);
+        
+        const toggleNova = document.getElementById('tem_vencimento_nova');
+        if (toggleNova) {
+            toggleNova.checked = false;
+            toggleNova.dispatchEvent(new Event('change'));
+        }
+        
         document.getElementById('modalNovaDespesa').classList.remove('hidden');
     };
 
@@ -122,9 +129,15 @@
             .then(function (data) {
                 document.getElementById('modalNome').value = data.nome;
                 document.getElementById('modalValor').value = data.valor_previsto;
-                document.getElementById('modalDia').value = data.dia_vencimento;
-                document.getElementById('modalInicio').value = data.data_inicio;
+                document.getElementById('modalDia').value = data.dia_vencimento || '';
+                document.getElementById('modalInicio').value = data.data_inicio || '';
                 document.getElementById('modalFim').value = data.data_fim || '';
+                
+                const toggleEdicao = document.getElementById('tem_vencimento_edicao');
+                if (toggleEdicao) {
+                    toggleEdicao.checked = data.tem_vencimento;
+                    toggleEdicao.dispatchEvent(new Event('change'));
+                }
 
                 container.innerHTML = '';
                 if (data.historico.length === 0) {
@@ -279,5 +292,36 @@
                 buscarTransacoesAPI(e.target.value);
             });
         }
+        
+        // Toggle Logic for tem_vencimento
+        function initToggleLogic(checkboxId, wrapperId, inputDiaId, inputInicioId) {
+            const checkbox = document.getElementById(checkboxId);
+            const wrapper = document.getElementById(wrapperId);
+            const inputDia = document.getElementById(inputDiaId);
+            const inputInicio = document.getElementById(inputInicioId);
+            
+            if (checkbox && wrapper) {
+                checkbox.addEventListener('change', function() {
+                    if (this.checked) {
+                        wrapper.classList.remove('hidden');
+                        if(inputDia) inputDia.required = true;
+                        if(inputInicio) inputInicio.required = true;
+                    } else {
+                        wrapper.classList.add('hidden');
+                        if(inputDia) {
+                            inputDia.required = false;
+                            inputDia.value = '';
+                        }
+                        if(inputInicio) {
+                            inputInicio.required = false;
+                            inputInicio.value = '';
+                        }
+                    }
+                });
+            }
+        }
+        
+        initToggleLogic('tem_vencimento_nova', 'wrapper-datas-nova', 'novaDespesaDia', 'novaDespesaInicio');
+        initToggleLogic('tem_vencimento_edicao', 'wrapper-datas-edicao', 'modalDia', 'modalInicio');
     });
 })();

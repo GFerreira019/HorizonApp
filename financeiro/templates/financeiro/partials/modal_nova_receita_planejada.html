@@ -38,10 +38,12 @@
                         <input type="number" step="0.01" name="valor_previsto" id="receitaValor"
                             class="w-full bg-[#151e32] text-white border border-slate-700 rounded-xl p-3 text-sm focus:border-cyan-500 outline-none" required>
                     </div>
-                    <div>
-                        <label class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1 block">Dia do Recebimento</label>
-                        <input type="number" name="dia_recebimento" id="receitaDia" min="1" max="31" value="1"
-                            class="w-full bg-[#151e32] text-white border border-slate-700 rounded-xl p-3 text-sm focus:border-cyan-500 outline-none" required>
+                    <div class="flex items-center justify-end">
+                        <label for="tem_vencimento_receita" class="text-sm font-bold text-slate-300 mr-3">Possui prazos?</label>
+                        <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" name="tem_vencimento" id="tem_vencimento_receita" class="sr-only peer">
+                            <div class="w-11 h-6 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-slate-300 after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-500"></div>
+                        </label>
                     </div>
                 </div>
 
@@ -63,16 +65,23 @@
                     </select>
                 </div>
 
-                <div class="grid grid-cols-2 gap-4">
+                <div id="wrapper-datas-receita" class="space-y-4 hidden border-t border-slate-800 pt-4 mt-2">
                     <div>
-                        <label class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1 block">Data de Início</label>
-                        <input type="date" name="data_inicio" id="receitaDataInicio"
-                            class="w-full bg-[#151e32] text-slate-300 border border-slate-700 rounded-xl p-3 text-sm focus:border-cyan-500 outline-none" required>
+                        <label class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1 block">Dia do Recebimento</label>
+                        <input type="number" name="dia_recebimento" id="receitaDia" min="1" max="31" value="1"
+                            class="w-full bg-[#151e32] text-white border border-slate-700 rounded-xl p-3 text-sm focus:border-cyan-500 outline-none">
                     </div>
-                    <div>
-                        <label class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1 block">Fim (Opcional)</label>
-                        <input type="date" name="data_fim" id="receitaDataFim"
-                            class="w-full bg-[#151e32] text-slate-300 border border-slate-700 rounded-xl p-3 text-sm focus:border-cyan-500 outline-none">
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1 block">Data de Início</label>
+                            <input type="date" name="data_inicio" id="receitaDataInicio"
+                                class="w-full bg-[#151e32] text-slate-300 border border-slate-700 rounded-xl p-3 text-sm focus:border-cyan-500 outline-none">
+                        </div>
+                        <div>
+                            <label class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1 block">Fim (Opcional)</label>
+                            <input type="date" name="data_fim" id="receitaDataFim"
+                                class="w-full bg-[#151e32] text-slate-300 border border-slate-700 rounded-xl p-3 text-sm focus:border-cyan-500 outline-none">
+                        </div>
                     </div>
                 </div>
 
