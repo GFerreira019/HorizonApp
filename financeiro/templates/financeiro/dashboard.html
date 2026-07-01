@@ -1,27 +1,41 @@
 {% extends 'base.html' %}
-{% load humanize %}
+{% load humanize l10n %}
 
 {% block extra_head %}
 <style>
     /* Fundo geral mais azulado/profundo */
-    body { background-color: #0B1120 !important; }
-    
+    body {
+        background-color: #0B1120 !important;
+    }
+
     /* Cartões com tom azul petróleo escuro */
     .card-dark {
         background-color: #151e32;
         border: 1px solid #2a3449;
     }
-    
+
     /* Degradê suave para botões e destaques (Ciano/Teal) */
     .bg-gradient-teal {
         background: linear-gradient(135deg, #06b6d4, #0d9488);
     }
-    
+
     /* Custom Scrollbar para listas pequenas */
-    .custom-scrollbar::-webkit-scrollbar { width: 4px; }
-    .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
-    .custom-scrollbar::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
-    .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #475569; }
+    .custom-scrollbar::-webkit-scrollbar {
+        width: 4px;
+    }
+
+    .custom-scrollbar::-webkit-scrollbar-track {
+        background: transparent;
+    }
+
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+        background: #334155;
+        border-radius: 4px;
+    }
+
+    .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+        background: #475569;
+    }
 </style>
 {% endblock %}
 
@@ -31,40 +45,45 @@
     <div class="flex items-center gap-2.5 pl-2">
         <div class="h-2 w-2 rounded-full bg-cyan-400 animate-pulse shadow-[0_0_8px_rgba(34,211,238,0.8)]"></div>
         <span class="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Exibindo</span>
-        <span class="text-sm font-black text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-emerald-400 tracking-wide">
+        <span
+            class="text-sm font-black text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-emerald-400 tracking-wide">
             {{ filtro_ativo }}
         </span>
     </div>
-    
+
     <div class="flex gap-1.5">
-        <button type="button" onclick="openPeriodModal()" class="px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase transition-all bg-slate-800 text-slate-300 hover:bg-slate-700 border border-slate-700">
+        <button type="button" onclick="openPeriodModal()"
+            class="px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase transition-all bg-slate-800 text-slate-300 hover:bg-slate-700 border border-slate-700">
             <i class="bi bi-funnel mr-1 text-cyan-500"></i> Novo Filtro
         </button>
-        
-        <a href="?mes={{ hoje.month }}&ano={{ hoje.year }}" class="px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase transition-all bg-gradient-teal text-white shadow-lg shadow-cyan-500/20 active:scale-95">
+
+        <a href="?mes={{ hoje.month }}&ano={{ hoje.year }}"
+            class="px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase transition-all bg-gradient-teal text-white shadow-lg shadow-cyan-500/20 active:scale-95">
             Mês Atual
         </a>
     </div>
 </div>
 
 <div class="grid grid-cols-2 gap-3 mb-6 mt-2">
-    
-    <a href="{% url 'historico_transacoes' %}?tipo=receita{% if periodo_tudo %}&periodo=tudo{% else %}&mes={{ mes_atual }}&ano={{ ano_atual }}{% endif %}" 
-       class="block card-dark p-4 rounded-2xl shadow-lg relative overflow-hidden group hover:border-emerald-500/50 transition-all">
+
+    <a href="{% url 'historico_transacoes' %}?tipo=receita{% if periodo_tudo %}&periodo=tudo{% else %}&mes={{ mes_atual }}&ano={{ ano_atual }}{% endif %}"
+        class="block card-dark p-4 rounded-2xl shadow-lg relative overflow-hidden group hover:border-emerald-500/50 transition-all">
         <div class="flex justify-between items-start mb-2">
             <span class="text-[11px] text-gray-400 font-medium uppercase tracking-wide">Entradas</span>
-            <div class="h-6 w-6 rounded-full bg-emerald-500/10 flex items-center justify-center text-emerald-400 text-xs">
+            <div
+                class="h-6 w-6 rounded-full bg-emerald-500/10 flex items-center justify-center text-emerald-400 text-xs">
                 <i class="bi bi-arrow-up-short text-lg"></i>
             </div>
         </div>
         <h3 class="text-lg font-bold text-emerald-400 mb-1">R$ {{ receitas|floatformat:2 }}</h3>
         <div class="h-1 w-full bg-slate-800 rounded-full mt-1">
-            <div class="h-1 bg-emerald-500 rounded-full shadow-[0_0_10px_rgba(16,185,129,0.5)]" style="width: 100%"></div>
+            <div class="h-1 bg-emerald-500 rounded-full shadow-[0_0_10px_rgba(16,185,129,0.5)]" style="width: 100%">
+            </div>
         </div>
     </a>
 
-    <a href="{% url 'historico_transacoes' %}?tipo=despesa{% if periodo_tudo %}&periodo=tudo{% else %}&mes={{ mes_atual }}&ano={{ ano_atual }}{% endif %}" 
-       class="block card-dark p-4 rounded-2xl shadow-lg relative overflow-hidden group hover:border-red-500/50 transition-all">
+    <a href="{% url 'historico_transacoes' %}?tipo=despesa{% if periodo_tudo %}&periodo=tudo{% else %}&mes={{ mes_atual }}&ano={{ ano_atual }}{% endif %}"
+        class="block card-dark p-4 rounded-2xl shadow-lg relative overflow-hidden group hover:border-red-500/50 transition-all">
         <div class="flex justify-between items-start mb-2">
             <span class="text-[11px] text-gray-400 font-medium uppercase tracking-wide">Saídas</span>
             <div class="h-6 w-6 rounded-full bg-red-500/10 flex items-center justify-center text-red-400 text-xs">
@@ -77,8 +96,8 @@
         </div>
     </a>
 
-    <a href="{% url 'historico_transacoes' %}?tipo=reservado{% if periodo_tudo %}&periodo=tudo{% else %}&mes={{ mes_atual }}&ano={{ ano_atual }}{% endif %}" 
-       class="block card-dark p-4 rounded-2xl shadow-lg relative overflow-hidden group hover:border-amber-500/50 transition-all">
+    <a href="{% url 'historico_transacoes' %}?tipo=reservado{% if periodo_tudo %}&periodo=tudo{% else %}&mes={{ mes_atual }}&ano={{ ano_atual }}{% endif %}"
+        class="block card-dark p-4 rounded-2xl shadow-lg relative overflow-hidden group hover:border-amber-500/50 transition-all">
         <div class="flex justify-between items-start mb-2">
             <span class="text-[11px] text-gray-400 font-medium uppercase tracking-wide">Reservado</span>
             <div class="h-6 w-6 rounded-full bg-amber-500/10 flex items-center justify-center text-amber-400 text-xs">
@@ -91,14 +110,15 @@
         </div>
     </a>
 
-    <div class="card-dark p-4 rounded-2xl shadow-lg relative overflow-hidden border-cyan-900/50 group transition-all">
+    <div class="card-dark p-4 rounded-2xl shadow-lg relative overflow-hidden border-cyan-900/50 group transition-all cursor-pointer hover:border-cyan-500/50"
+        onclick="openSaldoModal()">
         <div class="flex justify-between items-start mb-2">
             <span class="text-[11px] text-gray-400 font-medium uppercase tracking-wide">Saldo Livre</span>
             <div class="h-6 w-6 rounded-full bg-cyan-500/10 flex items-center justify-center text-cyan-400 text-xs">
                 <i class="bi bi-wallet2"></i>
             </div>
         </div>
-        <h3 class="text-lg font-bold text-cyan-300 mb-1">R$ {{ saldo|floatformat:2 }}</h3>
+        <h3 class="text-lg font-bold text-cyan-300 mb-1" id="saldo-livre-display">R$ {{ perfil.saldo_livre_atual|floatformat:2 }}</h3>
         <div class="h-1 w-full bg-slate-800 rounded-full mt-1">
             <div class="h-1 bg-cyan-400 rounded-full shadow-[0_0_10px_rgba(34,211,238,0.6)]" style="width: 70%"></div>
         </div>
@@ -108,13 +128,16 @@
 <div class="card-dark rounded-3xl p-6 shadow-lg mb-6 relative flex flex-col items-center border border-slate-800/60">
     <div class="w-full flex justify-between items-center mb-4">
         <h3 class="text-slate-300 font-bold text-sm">Distribuição</h3>
-        
+
         <!-- Controle de Alternância (Tabs) -->
-        <div class="flex items-center bg-slate-900 border border-slate-800 rounded-lg p-1 text-xs font-bold uppercase tracking-wider">
-            <button id="btn-visao-realizado" onclick="toggleDistribuicaoView('realizado')" class="px-3 py-1.5 rounded-md transition-all text-white bg-slate-800 shadow-sm">
+        <div
+            class="flex items-center bg-slate-900 border border-slate-800 rounded-lg p-1 text-xs font-bold uppercase tracking-wider">
+            <button id="btn-visao-realizado" onclick="toggleDistribuicaoView('realizado')"
+                class="px-3 py-1.5 rounded-md transition-all text-white bg-slate-800 shadow-sm">
                 Realizado
             </button>
-            <button id="btn-visao-envelopes" onclick="toggleDistribuicaoView('envelopes')" class="px-3 py-1.5 rounded-md transition-all text-slate-400 hover:text-white">
+            <button id="btn-visao-envelopes" onclick="toggleDistribuicaoView('envelopes')"
+                class="px-3 py-1.5 rounded-md transition-all text-slate-400 hover:text-white">
                 Envelopes
             </button>
         </div>
@@ -125,54 +148,81 @@
         <canvas id="financeChart"></canvas>
         <div class="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
             <span class="text-[10px] text-slate-400 uppercase tracking-widest mb-1">Disponível</span>
-            <span class="text-2xl font-bold text-white tracking-tight">R$ {{ saldo|floatformat:2 }}</span>
+            <span class="text-2xl font-bold text-white tracking-tight">R$ {{ perfil.saldo_livre_atual|floatformat:2 }}</span>
         </div>
     </div>
 
     <!-- Visão 2: Envelopes Orçamento -->
     <div id="visao-envelopes-orcamento" class="hidden w-full space-y-3 overflow-y-auto custom-scrollbar max-h-64 pr-1">
         {% for envelope in envelopes_progresso %}
-            <div class="bg-[#0f172a] rounded-xl p-3 border border-slate-800 hover:border-slate-700 transition-all">
-                <!-- Linha superior: nome + valor gasto / planejado -->
-                <div class="flex justify-between items-start mb-2 gap-2">
-                    <div class="min-w-0">
-                        <p class="text-xs font-bold text-white truncate leading-tight">{{ envelope.nome_envelope }}</p>
-                        <span class="inline-block text-[9px] font-semibold text-slate-500 bg-slate-800 px-1.5 py-0.5 rounded mt-0.5 truncate max-w-[140px]">{{ envelope.categoria_nome }}</span>
-                    </div>
-                    <div class="text-right shrink-0">
-                        <p class="text-xs font-bold {{ envelope.cor_texto }} whitespace-nowrap">R$ {{ envelope.valor_gasto|floatformat:2 }}</p>
-                        <p class="text-[9px] text-slate-600 whitespace-nowrap">de R$ {{ envelope.valor_planejado|floatformat:2 }}</p>
-                    </div>
+        <div class="bg-[#0f172a] rounded-xl p-3 border border-slate-800 hover:border-slate-700 transition-all">
+            <!-- Linha superior: nome + valor gasto / planejado -->
+            <div class="flex justify-between items-start mb-2 gap-2">
+                <div class="min-w-0">
+                    <p class="text-xs font-bold text-white truncate leading-tight">{{ envelope.nome_envelope }}</p>
+                    <span
+                        class="inline-block text-[9px] font-semibold text-slate-500 bg-slate-800 px-1.5 py-0.5 rounded mt-0.5 truncate max-w-[140px]">{{ envelope.categoria_nome }}</span>
                 </div>
-
-                <!-- Barra de progresso -->
-                <div class="w-full bg-slate-900 h-2 rounded-full overflow-hidden border border-slate-800/50">
-                    <div class="h-full rounded-full transition-all duration-500 {{ envelope.cor_barra }}"
-                         style="width: {{ envelope.porcentagem_barra }}%;"></div>
-                </div>
-
-                <!-- Linha inferior: status + percentual -->
-                <div class="mt-1.5 flex justify-between items-center">
-                    {% if envelope.estourado %}
-                        <span class="text-[9px] font-bold text-red-400 flex items-center gap-1">
-                            <i class="bi bi-exclamation-triangle-fill"></i>
-                            Estouro de R$ {{ envelope.valor_restante|floatformat:2|slice:"1:" }}
-                        </span>
-                    {% else %}
-                        <span class="text-[9px] text-slate-500 font-semibold">R$ {{ envelope.valor_restante|floatformat:2 }} disponíveis</span>
-                    {% endif %}
-                    <span class="text-[9px] font-black {{ envelope.cor_texto }}">{{ envelope.porcentagem_real|floatformat:0 }}%</span>
+                <div class="text-right shrink-0">
+                    <p class="text-xs font-bold {{ envelope.cor_texto }} whitespace-nowrap">R$ {{ envelope.valor_gasto|floatformat:2 }}</p>
+                    <p class="text-[9px] text-slate-600 whitespace-nowrap">de R$ {{ envelope.valor_planejado|floatformat:2 }}</p>
                 </div>
             </div>
+
+            <!-- Barra de progresso -->
+            <div class="w-full bg-slate-900 h-2 rounded-full overflow-hidden border border-slate-800/50">
+                <div class="h-full rounded-full transition-all duration-500 {{ envelope.cor_barra }}"
+                    style="width: {{ envelope.porcentagem_barra }}%;"></div>
+            </div>
+
+            <!-- Linha inferior: status + percentual -->
+            <div class="mt-1.5 flex justify-between items-center">
+                {% if envelope.estourado %}
+                <span class="text-[9px] font-bold text-red-400 flex items-center gap-1">
+                    <i class="bi bi-exclamation-triangle-fill"></i>
+                    Estouro de R$ {{ envelope.valor_restante|floatformat:2|slice:"1:" }}
+                </span>
+                {% elif envelope.limite_atingido or envelope.valor_restante == 0 %}
+                <span class="text-[9px] font-bold text-amber-400 flex items-center gap-1">
+                    <i class="bi bi-exclamation-triangle-fill"></i>
+                    Limite atingido
+                </span>
+                {% else %}
+                <span class="text-[9px] text-slate-500 font-semibold">R$ {{ envelope.valor_restante|floatformat:2 }}
+                    disponíveis</span>
+                {% endif %}
+                <span class="text-[9px] font-black {{ envelope.cor_texto }}">{{ envelope.porcentagem_real|floatformat:0 }}%</span>
+            </div>
+        </div>
         {% empty %}
-            <div class="flex flex-col items-center justify-center py-10 text-center">
-                <div class="h-14 w-14 rounded-2xl bg-slate-800/60 flex items-center justify-center mb-3">
-                    <i class="bi bi-inbox text-slate-600 text-2xl"></i>
-                </div>
-                <p class="text-[11px] text-slate-400 font-bold uppercase tracking-wider">Nenhum Envelope configurado</p>
-                <p class="text-[10px] text-slate-600 mt-1">Crie um provisionamento sem data de vencimento no Planejamento.</p>
+        <div class="flex flex-col items-center justify-center py-10 text-center">
+            <div class="h-14 w-14 rounded-2xl bg-slate-800/60 flex items-center justify-center mb-3">
+                <i class="bi bi-inbox text-slate-600 text-2xl"></i>
             </div>
+            <p class="text-[11px] text-slate-400 font-bold uppercase tracking-wider">Nenhum Envelope configurado</p>
+            <p class="text-[10px] text-slate-600 mt-1">Crie um provisionamento sem data de vencimento no Planejamento.
+            </p>
+        </div>
         {% endfor %}
+    </div>
+</div>
+
+<div class="card-dark p-4 rounded-2xl shadow-lg border border-slate-800 flex items-center justify-between group hover:border-cyan-500/50 transition-all cursor-pointer mb-6"
+    onclick="openVencimentosModal()">
+    <div class="flex items-center gap-3">
+        <div class="h-10 w-10 rounded-xl bg-cyan-500/10 text-cyan-400 flex items-center justify-center">
+            <i class="bi bi-calendar-check text-xl"></i>
+        </div>
+        <div>
+            <h4 class="text-sm font-bold text-white">Vencimentos do Mês</h4>
+            <p class="text-[10px] text-gray-500">Acompanhe suas contas fixas</p>
+        </div>
+    </div>
+    <div class="flex items-center gap-2">
+        <span
+            class="text-[9px] bg-amber-500/20 text-amber-400 px-2 py-1 rounded-md font-bold uppercase tracking-wider">Ver
+            Lista</span>
+        <i class="bi bi-chevron-right text-slate-600 group-hover:text-cyan-400 transition-colors"></i>
     </div>
 </div>
 
@@ -183,13 +233,8 @@
                 <i class="bi bi-cash-stack text-emerald-400"></i>
                 Fluxo de Caixa
             </h3>
-            <button
-                id="btnToggleChart"
-                onclick="toggleChartView()"
-                title="Alternar visualização"
-                class="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-widest border transition-all duration-200
-                       border-slate-700 text-slate-400 bg-slate-800/50 hover:border-cyan-500/60 hover:text-cyan-400"
-            >
+            <button id="btnToggleChart" onclick="toggleChartView()" title="Alternar visualização" class="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-widest border transition-all duration-200
+                       border-slate-700 text-slate-400 bg-slate-800/50 hover:border-cyan-500/60 hover:text-cyan-400">
                 <i id="btnToggleIcon" class="bi bi-bar-chart-line text-[11px]"></i>
                 <span id="btnToggleLabel">Ver Macros</span>
             </button>
@@ -198,7 +243,8 @@
             <canvas id="lineChart"></canvas>
             <div id="chartEmptyState" class="hidden absolute inset-0 flex flex-col items-center justify-center gap-2">
                 <i class="bi bi-bar-chart text-slate-700 text-3xl"></i>
-                <p class="text-[11px] text-slate-500 font-bold uppercase tracking-wide" id="chartEmptyMsg">Nenhum dado disponível</p>
+                <p class="text-[11px] text-slate-500 font-bold uppercase tracking-wide" id="chartEmptyMsg">Nenhum dado
+                    disponível</p>
             </div>
         </div>
     </div>
@@ -206,7 +252,8 @@
     <div class="card-dark rounded-3xl p-5 shadow-lg">
         <h3 class="text-slate-300 font-bold mb-4 text-sm flex justify-between items-center">
             Últimas Movimentações
-            <a href="{% url 'historico_transacoes' %}" class="text-[10px] text-cyan-500 hover:text-cyan-400 uppercase tracking-wide">Ver todas</a>
+            <a href="{% url 'historico_transacoes' %}"
+                class="text-[10px] text-cyan-500 hover:text-cyan-400 uppercase tracking-wide">Ver todas</a>
         </h3>
         <div class="space-y-4 overflow-y-auto max-h-48 pr-2 custom-scrollbar">
             {% for t in ultimas_transacoes %}
@@ -215,24 +262,27 @@
                     <div class="h-8 w-8 rounded-full flex items-center justify-center 
                         {% if t.categoria.tipo == 'receita' %}bg-emerald-500/10 text-emerald-400
                         {% else %}bg-red-500/10 text-red-400{% endif %}">
-                        <i class="bi {% if t.categoria.tipo == 'receita' %}bi-arrow-up-right{% else %}bi-bag{% endif %}"></i>
+                        <i
+                            class="bi {% if t.categoria.tipo == 'receita' %}bi-arrow-up-right{% else %}bi-bag{% endif %}"></i>
                     </div>
                     <div>
-                        <p class="text-white text-sm font-medium leading-tight truncate max-w-[150px]">{{ t.descricao }}</p>
+                        <p class="text-white text-sm font-medium leading-tight truncate max-w-[150px]">{{ t.descricao }}
+                        </p>
                         <p class="text-[10px] text-slate-500">{{ t.data|date:"d/m" }} • {{ t.categoria.nome }}</p>
                     </div>
                 </div>
                 <div class="text-right">
-                    <span class="block text-sm font-bold {% if t.categoria.tipo == 'receita' %}text-emerald-400{% else %}text-white{% endif %}">
+                    <span
+                        class="block text-sm font-bold {% if t.categoria.tipo == 'receita' %}text-emerald-400{% else %}text-white{% endif %}">
                         {% if t.categoria.tipo == 'receita' %}+{% else %}-{% endif %} R$ {{ t.valor|floatformat:2 }}
                     </span>
                     {% if not t.pago %}
-                        <span class="text-[9px] text-amber-500 font-medium">Pendente</span>
+                    <span class="text-[9px] text-amber-500 font-medium">Pendente</span>
                     {% endif %}
                 </div>
             </div>
             {% empty %}
-                <p class="text-xs text-slate-500 text-center py-4">Nenhuma movimentação recente.</p>
+            <p class="text-xs text-slate-500 text-center py-4">Nenhuma movimentação recente.</p>
             {% endfor %}
         </div>
     </div>
@@ -240,15 +290,18 @@
 
 <div id="periodModal" class="fixed inset-0 z-50 hidden" aria-labelledby="modal-title" role="dialog" aria-modal="true">
     <div class="fixed inset-0 bg-[#000000]/80 backdrop-blur-sm transition-opacity" onclick="closePeriodModal()"></div>
-    <div class="fixed inset-x-0 bottom-0 z-50 w-full bg-[#151e32] rounded-t-3xl shadow-2xl border-t border-slate-700/50 transform transition-all sm:max-w-md sm:mx-auto sm:relative sm:rounded-xl sm:my-8">
-        
+    <div
+        class="fixed inset-x-0 bottom-0 z-50 w-full bg-[#151e32] rounded-t-3xl shadow-2xl border-t border-slate-700/50 transform transition-all sm:max-w-md sm:mx-auto sm:relative sm:rounded-xl sm:my-8">
+
         <div class="px-6 py-5 border-b border-slate-700/50 flex justify-between items-center">
             <h3 class="text-lg font-bold text-white tracking-wide">Escolher Período</h3>
-            <button onclick="closePeriodModal()" class="h-8 w-8 rounded-full bg-slate-800 text-slate-400 hover:text-white flex items-center justify-center transition-colors">&times;</button>
+            <button onclick="closePeriodModal()"
+                class="h-8 w-8 rounded-full bg-slate-800 text-slate-400 hover:text-white flex items-center justify-center transition-colors">&times;</button>
         </div>
-        
+
         <div class="p-6 space-y-5">
-            <a href="?periodo=tudo" class="w-full bg-slate-800/50 hover:bg-slate-800 text-cyan-400 border border-slate-700 font-bold py-3.5 rounded-xl flex items-center justify-center gap-2 transition-colors">
+            <a href="?periodo=tudo"
+                class="w-full bg-slate-800/50 hover:bg-slate-800 text-cyan-400 border border-slate-700 font-bold py-3.5 rounded-xl flex items-center justify-center gap-2 transition-colors">
                 <i class="bi bi-calendar-range text-lg"></i> Ver Todo o Histórico
             </a>
 
@@ -261,8 +314,10 @@
             <form method="get" class="space-y-4">
                 <div class="grid grid-cols-2 gap-4">
                     <div>
-                        <label class="text-[10px] text-slate-400 font-bold mb-1.5 block uppercase tracking-wider">Mês</label>
-                        <select name="mes" class="form-select text-slate-300 w-full bg-[#0f172a] border-slate-700 rounded-lg p-3">
+                        <label
+                            class="text-[10px] text-slate-400 font-bold mb-1.5 block uppercase tracking-wider">Mês</label>
+                        <select name="mes"
+                            class="form-select text-slate-300 w-full bg-[#0f172a] border-slate-700 rounded-lg p-3">
                             <option value="1" {% if mes_atual == 1 %}selected{% endif %}>Janeiro</option>
                             <option value="2" {% if mes_atual == 2 %}selected{% endif %}>Fevereiro</option>
                             <option value="3" {% if mes_atual == 3 %}selected{% endif %}>Março</option>
@@ -278,12 +333,15 @@
                         </select>
                     </div>
                     <div>
-                        <label class="text-[10px] text-slate-400 font-bold mb-1.5 block uppercase tracking-wider">Ano</label>
-                        <input type="number" name="ano" value="{{ ano_atual }}" class="form-control text-slate-300 w-full bg-[#0f172a] border-slate-700 rounded-lg p-3">
+                        <label
+                            class="text-[10px] text-slate-400 font-bold mb-1.5 block uppercase tracking-wider">Ano</label>
+                        <input type="number" name="ano" value="{{ ano_atual }}"
+                            class="form-control text-slate-300 w-full bg-[#0f172a] border-slate-700 rounded-lg p-3">
                     </div>
                 </div>
-                
-                <button type="submit" class="w-full bg-[#1e293b] hover:bg-slate-700 text-white border border-slate-600 font-bold py-3.5 rounded-xl shadow-lg transition-colors text-sm uppercase tracking-wide mt-2">
+
+                <button type="submit"
+                    class="w-full bg-[#1e293b] hover:bg-slate-700 text-white border border-slate-600 font-bold py-3.5 rounded-xl shadow-lg transition-colors text-sm uppercase tracking-wide mt-2">
                     Aplicar Filtro
                 </button>
             </form>
@@ -291,48 +349,57 @@
     </div>
 </div>
 
-<div id="transactionModal" class="fixed inset-0 z-50 hidden" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+<div id="transactionModal" class="fixed inset-0 z-50 hidden" aria-labelledby="modal-title" role="dialog"
+    aria-modal="true">
     <div class="fixed inset-0 bg-[#000000]/80 backdrop-blur-sm transition-opacity" onclick="closeModal()"></div>
-    
-    <div class="fixed inset-x-0 bottom-0 z-50 w-full bg-[#151e32] rounded-t-3xl shadow-2xl border-t border-slate-700/50 transform transition-all sm:max-w-lg sm:mx-auto sm:relative sm:rounded-xl sm:my-8">
+
+    <div
+        class="fixed inset-x-0 bottom-0 z-50 w-full bg-[#151e32] rounded-t-3xl shadow-2xl border-t border-slate-700/50 transform transition-all sm:max-w-lg sm:mx-auto sm:relative sm:rounded-xl sm:my-8">
         <div class="px-6 py-5 border-b border-slate-700/50 flex justify-between items-center">
             <h3 class="text-lg font-bold text-white tracking-wide">Novo Lançamento</h3>
-            <button onclick="closeModal()" class="h-8 w-8 rounded-full bg-slate-800 text-slate-400 hover:text-white flex items-center justify-center transition-colors" aria-label="Fechar">&times;</button>
+            <button onclick="closeModal()"
+                class="h-8 w-8 rounded-full bg-slate-800 text-slate-400 hover:text-white flex items-center justify-center transition-colors"
+                aria-label="Fechar">&times;</button>
         </div>
-        
+
         <form method="post" class="p-6 space-y-5">
             {% csrf_token %}
-            
+
             {% if form.errors %}
-            <div id="form-errors-box" class="bg-rose-900/50 border border-rose-500 text-rose-200 text-xs p-3 rounded-xl mb-4">
+            <div id="form-errors-box"
+                class="bg-rose-900/50 border border-rose-500 text-rose-200 text-xs p-3 rounded-xl mb-4">
                 <strong>Verifique os campos:</strong>
                 <ul class="list-disc pl-4 mt-1">
                     {% for field, errors in form.errors.items %}
-                        {% for error in errors %}<li>{{ error }}</li>{% endfor %}
+                    {% for error in errors %}<li>{{ error }}</li>{% endfor %}
                     {% endfor %}
                 </ul>
             </div>
             {% endif %}
 
             <div>
-                <label class="text-[10px] text-cyan-400 font-bold mb-1.5 block uppercase tracking-wider">Descrição</label>
+                <label
+                    class="text-[10px] text-cyan-400 font-bold mb-1.5 block uppercase tracking-wider">Descrição</label>
                 {{ form.descricao }}
             </div>
             <div class="grid grid-cols-2 gap-4">
                 <div>
-                    <label class="text-[10px] text-cyan-400 font-bold mb-1.5 block uppercase tracking-wider">Valor</label>
+                    <label
+                        class="text-[10px] text-cyan-400 font-bold mb-1.5 block uppercase tracking-wider">Valor</label>
                     {{ form.valor }}
                 </div>
                 <div>
-                    <label class="text-[10px] text-slate-400 font-bold mb-1.5 block uppercase tracking-wider">Data</label>
+                    <label
+                        class="text-[10px] text-slate-400 font-bold mb-1.5 block uppercase tracking-wider">Data</label>
                     {{ form.data }}
                 </div>
             </div>
             <div>
-                <label class="text-[10px] text-slate-400 font-bold mb-1.5 block uppercase tracking-wider">Categoria</label>
+                <label
+                    class="text-[10px] text-slate-400 font-bold mb-1.5 block uppercase tracking-wider">Categoria</label>
                 {{ form.categoria }}
             </div>
-            
+
             <div class="flex items-center justify-between bg-[#0f1523] p-4 rounded-xl border border-slate-800">
                 <div class="flex items-center gap-3">
                     <i class="bi bi-check2-circle text-emerald-400 text-lg"></i>
@@ -340,7 +407,7 @@
                 </div>
                 <div class="form-check form-switch transform scale-125">{{ form.pago }}</div>
             </div>
-            
+
             <div class="flex items-center justify-between bg-[#0f1523] p-4 rounded-xl border border-slate-800">
                 <div class="flex items-center gap-3">
                     <i class="bi bi-arrow-repeat text-blue-400 text-lg"></i>
@@ -353,42 +420,158 @@
 
             <div id="container-prazos" class="grid grid-cols-2 gap-4 mt-4 hidden transition-all">
                 <div>
-                    <label class="text-[10px] text-slate-400 font-bold mb-1.5 block uppercase tracking-wider">Início</label>
+                    <label
+                        class="text-[10px] text-slate-400 font-bold mb-1.5 block uppercase tracking-wider">Início</label>
                     {{ form.data_inicio_fixo }}
                 </div>
                 <div>
-                    <label class="text-[10px] text-slate-400 font-bold mb-1.5 block uppercase tracking-wider">Fim (Opcional)</label>
+                    <label class="text-[10px] text-slate-400 font-bold mb-1.5 block uppercase tracking-wider">Fim
+                        (Opcional)</label>
                     {{ form.data_fim_fixo }}
                 </div>
             </div>
 
             <input type="hidden" name="transacao_padrao_id" id="transacao_padrao_id">
 
-            <button type="button" onclick="abrirBuscaTransacao()" id="btnSelecionarPadrao" class="w-full mt-4 bg-slate-800/80 hover:bg-slate-700 text-cyan-400 border border-slate-700 border-dashed text-xs font-bold py-3 rounded-xl flex items-center justify-center gap-2 transition-all">
+            <button type="button" onclick="abrirBuscaTransacao()" id="btnSelecionarPadrao"
+                class="w-full mt-4 bg-slate-800/80 hover:bg-slate-700 text-cyan-400 border border-slate-700 border-dashed text-xs font-bold py-3 rounded-xl flex items-center justify-center gap-2 transition-all">
                 <i class="bi bi-search"></i> Vincular a uma Transação Passada
             </button>
 
-            <button type="submit" class="w-full bg-gradient-teal text-white font-bold py-4 rounded-xl shadow-[0_4px_20px_rgba(13,148,136,0.4)] hover:shadow-[0_4px_25px_rgba(13,148,136,0.6)] transition-all mt-2 text-sm uppercase tracking-wide">
+            <button type="submit"
+                class="w-full bg-gradient-teal text-white font-bold py-4 rounded-xl shadow-[0_4px_20px_rgba(13,148,136,0.4)] hover:shadow-[0_4px_25px_rgba(13,148,136,0.6)] transition-all mt-2 text-sm uppercase tracking-wide">
                 Salvar Transação
             </button>
         </form>
     </div>
 </div>
 
-<div id="modalBuscaTransacao" class="fixed inset-0 z-[70] hidden" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+<div id="modalBuscaTransacao" class="fixed inset-0 z-[70] hidden" aria-labelledby="modal-title" role="dialog"
+    aria-modal="true">
     <div class="fixed inset-0 bg-[#000000]/80 backdrop-blur-sm" onclick="fecharBuscaTransacao()"></div>
-    
-    <div class="fixed inset-x-0 top-16 mx-auto max-w-md bg-[#151e32] rounded-3xl shadow-2xl border border-slate-700 flex flex-col max-h-[75vh]">
+
+    <div
+        class="fixed inset-x-0 top-16 mx-auto max-w-md bg-[#151e32] rounded-3xl shadow-2xl border border-slate-700 flex flex-col max-h-[75vh]">
         <div class="p-5 border-b border-slate-700/50 flex items-center justify-between">
             <h3 class="text-white font-bold tracking-wide">Selecionar Padrão</h3>
-            <button type="button" onclick="fecharBuscaTransacao()" class="text-slate-400 hover:text-white"><i class="bi bi-x-lg text-lg"></i></button>
+            <button type="button" onclick="fecharBuscaTransacao()" class="text-slate-400 hover:text-white"><i
+                    class="bi bi-x-lg text-lg"></i></button>
         </div>
-        
+
         <div class="p-5 flex-1 overflow-hidden flex flex-col">
-            <input type="text" id="inputBuscaTransacao" placeholder="Pesquise (ex: Netflix, Spotify)..." class="form-control w-full bg-[#0f172a] text-sm text-white border-slate-600 rounded-xl p-3 mb-4 focus:border-cyan-500">
-            
+            <input type="text" id="inputBuscaTransacao" placeholder="Pesquise (ex: Netflix, Spotify)..."
+                class="form-control w-full bg-[#0f172a] text-sm text-white border-slate-600 rounded-xl p-3 mb-4 focus:border-cyan-500">
+
             <div id="listaTransacoesBusca" class="overflow-y-auto flex-1 space-y-2 pr-2 custom-scrollbar">
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="vencimentosModal" class="fixed inset-0 z-[60] hidden flex items-center justify-center p-4">
+    <div class="absolute inset-0 bg-gray-900/80 backdrop-blur-sm transition-opacity" onclick="closeVencimentosModal()">
+    </div>
+
+    <div class="relative w-full max-w-md bg-[#0B1120] rounded-3xl shadow-2xl border border-slate-800 flex flex-col overflow-hidden transition-transform transform scale-95 opacity-0"
+        id="vencimentosModalContent" style="max-height: 80vh;">
+
+        <div class="p-5 border-b border-slate-800 flex justify-between items-center bg-[#0B1120]/50">
+            <div>
+                <h3 class="text-white font-bold tracking-wide text-sm">Vencimentos do Mês</h3>
+                <p class="text-[9px] text-slate-400">Contas fixas com data de vencimento</p>
+            </div>
+            <button type="button" onclick="closeVencimentosModal()"
+                class="h-8 w-8 rounded-full bg-slate-800 text-slate-400 hover:text-white flex items-center justify-center transition-colors">
+                <i class="bi bi-x-lg text-xs"></i>
+            </button>
+        </div>
+
+        <div class="p-5 overflow-y-auto custom-scrollbar flex-1 space-y-3">
+            {% for item in modal_vencimentos_mes %}
+            <div class="flex items-center justify-between bg-[#151e32] p-3 rounded-xl border border-slate-800/60">
+                <div class="flex items-center gap-3">
+                    <div
+                        class="h-9 w-9 rounded-lg bg-slate-800 flex flex-col items-center justify-center border border-slate-700 shrink-0">
+                        <span class="text-[8px] text-slate-400 uppercase font-black leading-none">Dia</span>
+                        <span class="text-sm text-cyan-400 font-bold leading-none mt-0.5">{{ item.dia_vencimento }}</span>
+                    </div>
+                    <div>
+                        <p class="text-sm text-white font-bold truncate max-w-[140px]">{{ item.nome }}</p>
+                        {% if item.exibir_desvio %}
+                        {% if item.pagou_a_mais %}
+                        <p class="text-[10px] text-rose-400 font-medium mt-0.5 flex items-center gap-1">
+                            <i class="bi bi-arrow-up-right text-[8px]"></i> + R$ {{ item.diferenca|floatformat:2 }}
+                        </p>
+                        {% elif item.pagou_a_menos %}
+                        <p class="text-[10px] text-emerald-400 font-medium mt-0.5 flex items-center gap-1">
+                            <i class="bi bi-arrow-down-right text-[8px]"></i> - R$ {{ item.diferenca|floatformat:2 }}
+                        </p>
+                        {% endif %}
+                        {% endif %}
+                    </div>
                 </div>
+                <div class="text-right flex flex-col items-end">
+                    <span class="text-sm font-black text-slate-200">R$ {{ item.valor_previsto|floatformat:2 }}</span>
+                    {% if item.status_pago %}
+                    <span
+                        class="text-[9px] bg-emerald-500/10 text-emerald-400 px-2 py-0.5 rounded font-bold uppercase tracking-wider mt-1">Pago</span>
+                    {% else %}
+                    <span
+                        class="text-[9px] bg-amber-500/10 text-amber-400 px-2 py-0.5 rounded font-bold uppercase tracking-wider mt-1">Pendente</span>
+                    {% endif %}
+                </div>
+            </div>
+            {% empty %}
+            <div class="flex flex-col items-center justify-center py-8 text-center">
+                <i class="bi bi-calendar-x text-3xl text-slate-600 mb-2"></i>
+                <p class="text-xs font-bold text-slate-400 uppercase tracking-widest">Nenhuma conta fixa cadastrada</p>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+
+<div id="saldoModal" class="fixed inset-0 z-[75] hidden flex items-center justify-center p-4">
+    <div class="absolute inset-0 bg-gray-900/80 backdrop-blur-sm transition-opacity" onclick="closeSaldoModal()"></div>
+
+    <div class="relative w-full max-w-sm bg-[#151e32] rounded-3xl shadow-2xl border border-slate-700 flex flex-col overflow-hidden transition-transform transform scale-95 opacity-0"
+        id="saldoModalContent">
+
+        <div class="p-5 border-b border-slate-700/50 flex justify-between items-center">
+            <h3 class="text-white font-bold tracking-wide">Editar Saldo Livre</h3>
+            <button type="button" onclick="closeSaldoModal()"
+                class="h-8 w-8 rounded-full bg-slate-800 text-slate-400 hover:text-white flex items-center justify-center transition-colors">
+                <i class="bi bi-x-lg text-xs"></i>
+            </button>
+        </div>
+
+        <div class="p-5 space-y-4">
+            <div>
+                <label class="text-[10px] text-slate-400 font-bold mb-1.5 block uppercase tracking-wider">Valor do
+                    Saldo</label>
+                <div class="relative">
+                    <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 font-bold">R$</span>
+                    <input type="number" step="0.01" id="inputSaldoLivre"
+                        value="{{ perfil.saldo_livre_atual|unlocalize }}"
+                        class="form-control text-slate-200 w-full bg-[#0f172a] border-slate-600 rounded-xl p-3 pl-9 focus:border-cyan-500">
+                </div>
+            </div>
+
+            <div class="flex items-center justify-between bg-[#0f1523] p-4 rounded-xl border border-slate-800">
+                <div class="flex items-center gap-3">
+                    <i class="bi bi-bank text-emerald-400 text-lg"></i>
+                    <span class="text-xs text-slate-300 font-medium leading-tight">Sincronizar com Open Finance
+                        (Desativa modo manual)</span>
+                </div>
+                <div class="form-check form-switch transform scale-125">
+                    <input type="checkbox" id="checkSyncBanco" class="form-check-input" role="switch" {% if not perfil.usar_saldo_manual %}checked{% endif %}>
+                </div>
+            </div>
+
+            <button type="button" onclick="salvarSaldoLivre()"
+                class="w-full bg-gradient-teal text-white font-bold py-3.5 rounded-xl shadow-lg transition-colors text-sm uppercase tracking-wide mt-2">
+                Salvar Alterações
+            </button>
         </div>
     </div>
 </div>
@@ -398,12 +581,12 @@
 {% block scripts %}
 <script>
     // Unificando a inicialização de Scripts
-    document.addEventListener("DOMContentLoaded", function() {
-        
+    document.addEventListener("DOMContentLoaded", function () {
+
         if (typeof jQuery !== 'undefined') {
-            $('#id_categoria').select2({ 
-                placeholder: "Selecione...", 
-                dropdownParent: $('#transactionModal') 
+            $('#id_categoria').select2({
+                placeholder: "Selecione...",
+                dropdownParent: $('#transactionModal')
             });
         }
 
@@ -413,13 +596,13 @@
         const containerPrazos = document.getElementById('container-prazos');
 
         if (checkFixo) {
-            checkFixo.addEventListener('change', function() {
+            checkFixo.addEventListener('change', function () {
                 if (this.checked) {
                     containerPrazos.classList.remove('hidden');
                     document.getElementById('id_data_inicio_fixo').value = document.getElementById('id_data').value;
                 } else {
                     containerPrazos.classList.add('hidden');
-                    document.getElementById('id_data_fim_fixo').value = ''; 
+                    document.getElementById('id_data_fim_fixo').value = '';
                 }
             });
         }
@@ -431,18 +614,81 @@
     });
 
     // Funções de Controle de UI
-    function openModal() { 
-        document.getElementById('transactionModal').classList.remove('hidden'); 
+    function openModal() {
+        document.getElementById('transactionModal').classList.remove('hidden');
     }
-    
+
     // Fechar modal ao clicar fora ou no botão de fechar
-    function closeModal() { 
-        document.getElementById('transactionModal').classList.add('hidden'); 
+    function closeModal() {
+        document.getElementById('transactionModal').classList.add('hidden');
+    }
+
+    function openVencimentosModal() {
+        const modal = document.getElementById("vencimentosModal");
+        const content = document.getElementById("vencimentosModalContent");
+        modal.classList.remove("hidden");
+        setTimeout(function () {
+            content.classList.remove("scale-95", "opacity-0");
+            content.classList.add("scale-100", "opacity-100");
+        }, 10);
+    }
+
+    function closeVencimentosModal() {
+        const modal = document.getElementById("vencimentosModal");
+        const content = document.getElementById("vencimentosModalContent");
+        content.classList.remove("scale-100", "opacity-100");
+        content.classList.add("scale-95", "opacity-0");
+        setTimeout(function () { modal.classList.add("hidden"); }, 200);
+    }
+
+    // Modal Saldo Livre
+    function openSaldoModal() {
+        const modal = document.getElementById("saldoModal");
+        const content = document.getElementById("saldoModalContent");
+        modal.classList.remove("hidden");
+        setTimeout(function () {
+            content.classList.remove("scale-95", "opacity-0");
+            content.classList.add("scale-100", "opacity-100");
+        }, 10);
+    }
+
+    function closeSaldoModal() {
+        const modal = document.getElementById("saldoModal");
+        const content = document.getElementById("saldoModalContent");
+        content.classList.remove("scale-100", "opacity-100");
+        content.classList.add("scale-95", "opacity-0");
+        setTimeout(function () { modal.classList.add("hidden"); }, 200);
+    }
+
+    function salvarSaldoLivre() {
+        const novoSaldo = document.getElementById("inputSaldoLivre").value;
+        const syncBanco = document.getElementById("checkSyncBanco").checked;
+
+        fetch("{% url 'atualizar_saldo_livre_ajax' %}", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "X-CSRFToken": "{{ csrf_token }}"
+            },
+            body: JSON.stringify({
+                novo_saldo: novoSaldo,
+                is_manual: !syncBanco
+            })
+        })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === "success") {
+                    window.location.reload();
+                } else {
+                    alert("Erro ao salvar o saldo: " + data.mensagem);
+                }
+            })
+            .catch(err => alert("Erro de rede ao salvar."));
     }
 
     // Dados injetados pelo Django via json.dumps — seguros para eval
-    const DADOS_FLUXO = {{ dados_fluxo_json|safe }};
-    const DADOS_MACROS = {{ dados_macros_json|safe }};
+    const DADOS_FLUXO = {{ dados_fluxo_json| safe }};
+    const DADOS_MACROS = {{ dados_macros_json| safe }};
 
     // Estado do toggle: 'fluxo' | 'macros'
     let viewAtual = 'fluxo';
@@ -450,16 +696,16 @@
 
     // Paleta de cores consistente com o Design System do HorizonAPP
     const CORES = {
-        emerald:   'rgba(52, 211, 153, 1)',
+        emerald: 'rgba(52, 211, 153, 1)',
         emeraldBg: 'rgba(52, 211, 153, 0.15)',
-        red:       'rgba(248, 113, 113, 1)',
-        redBg:     'rgba(248, 113, 113, 0.15)',
-        indigo:    'rgba(99, 102, 241, 1)',
-        indigoBg:  'rgba(99, 102, 241, 0.2)',
-        cyan:      'rgba(34, 211, 238, 1)',
-        cyanBg:    'rgba(34, 211, 238, 0.2)',
-        grid:      'rgba(51, 65, 85, 0.5)',
-        tick:      '#64748b',
+        red: 'rgba(248, 113, 113, 1)',
+        redBg: 'rgba(248, 113, 113, 0.15)',
+        indigo: 'rgba(99, 102, 241, 1)',
+        indigoBg: 'rgba(99, 102, 241, 0.2)',
+        cyan: 'rgba(34, 211, 238, 1)',
+        cyanBg: 'rgba(34, 211, 238, 0.2)',
+        grid: 'rgba(51, 65, 85, 0.5)',
+        tick: '#64748b',
     };
 
     // Opções comuns aos dois modos de gráfico
@@ -614,10 +860,10 @@
     }
 
     function atualizarUI() {
-        const titulo    = document.getElementById('chartCardTitle');
-        const btnLabel  = document.getElementById('btnToggleLabel');
-        const btnIcon   = document.getElementById('btnToggleIcon');
-        const btn       = document.getElementById('btnToggleChart');
+        const titulo = document.getElementById('chartCardTitle');
+        const btnLabel = document.getElementById('btnToggleLabel');
+        const btnIcon = document.getElementById('btnToggleIcon');
+        const btn = document.getElementById('btnToggleChart');
 
         if (viewAtual === 'fluxo') {
             titulo.innerHTML = '<i class="bi bi-cash-stack text-emerald-400"></i> Fluxo de Caixa';
@@ -649,28 +895,22 @@
         if (visao === 'realizado') {
             grafico.classList.remove('hidden');
             envelopes.classList.add('hidden');
-            
+
             btnRealizado.classList.add('text-white', 'bg-slate-800', 'shadow-sm');
             btnRealizado.classList.remove('text-slate-400');
-            
+
             btnEnvelopes.classList.remove('text-white', 'bg-slate-800', 'shadow-sm');
             btnEnvelopes.classList.add('text-slate-400');
         } else {
             grafico.classList.add('hidden');
             envelopes.classList.remove('hidden');
-            
+
             btnEnvelopes.classList.add('text-white', 'bg-slate-800', 'shadow-sm');
             btnEnvelopes.classList.remove('text-slate-400');
-            
+
             btnRealizado.classList.remove('text-white', 'bg-slate-800', 'shadow-sm');
             btnRealizado.classList.add('text-slate-400');
         }
-    }
-
-    function toggleChartView() {
-        viewAtual = viewAtual === 'fluxo' ? 'macros' : 'fluxo';
-        atualizarUI();
-        renderizarGrafico();
     }
 
     // Inicialização ao carregar a página
@@ -707,15 +947,15 @@
         // Inicializa o gráfico de alternância no modo padrão (fluxo)
         renderizarGrafico();
     }
-    
+
     // Funções de Controle de UI
-    function openPeriodModal() { 
-        document.getElementById('periodModal').classList.remove('hidden'); 
+    function openPeriodModal() {
+        document.getElementById('periodModal').classList.remove('hidden');
     }
-    
+
     // Fechar modal ao clicar fora ou no botão de fechar
-    function closePeriodModal() { 
-        document.getElementById('periodModal').classList.add('hidden'); 
+    function closePeriodModal() {
+        document.getElementById('periodModal').classList.add('hidden');
     }
 
     // Funções do Pop-up de Vínculo de Despesa Fixa
@@ -730,7 +970,7 @@
     }
 
     // Escuta a digitação na barra de pesquisa
-    document.getElementById('inputBuscaTransacao').addEventListener('input', function(e) {
+    document.getElementById('inputBuscaTransacao').addEventListener('input', function (e) {
         buscarTransacoesAPI(e.target.value);
     });
 
@@ -740,7 +980,7 @@
         const data = await response.json();
         const lista = document.getElementById('listaTransacoesBusca');
         lista.innerHTML = '';
-        
+
         if (data.transacoes.length === 0) {
             lista.innerHTML = '<p class="text-xs text-slate-500 text-center py-6 font-bold uppercase tracking-wide">Nenhuma transação encontrada</p>';
             return;
@@ -765,15 +1005,16 @@
     function confirmarVinculo(id, descricao) {
         if (confirm(`Deseja usar "${descricao}" como padrão? \nSempre que o Nubank importar algo parecido, será classificado automaticamente nesta Despesa Fixa.`)) {
             document.getElementById('transacao_padrao_id').value = id;
-            
+
             const btn = document.getElementById('btnSelecionarPadrao');
             btn.innerHTML = `<i class="bi bi-check2-all text-lg"></i> Vinculado: ${descricao.substring(0, 18)}...`;
             btn.classList.remove('bg-slate-800/80', 'text-cyan-400', 'border-slate-700', 'border-dashed');
             btn.classList.add('bg-emerald-500/10', 'text-emerald-400', 'border-emerald-500/30', 'border-solid');
-            
+
             fecharBuscaTransacao();
         }
     }
+
 
 </script>
 {% endblock %}

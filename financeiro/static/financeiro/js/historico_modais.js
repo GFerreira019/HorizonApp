@@ -6,28 +6,37 @@
  *   - window.HORIZON_CATEGORIAS: objeto JSON injetado pelo template com estrutura:
  *       { macros: [{id, nome, tipo}], subcategorias: [{id, nome, macro_id}] }
  *   - window.HORIZON_URLS.reclassificar: URL do endpoint AJAX (injetado pelo template)
+ *
+ * Funcionalidades de Estorno:
+ *   - Toggle "Marcar como Estorno/Reembolso" visível apenas para transações de receita.
+ *   - Switch DESLIGADO → popula macros com tipo='receita'.
+ *   - Switch LIGADO   → popula macros com tipo='despesa' (estorno abate a despesa).
+ *   - Checkbox de lote desabilitado durante modo estorno (estornos são sempre individuais).
+ *   - Envia `is_estorno` no payload AJAX ao confirmar.
  */
 
 (function () {
   'use strict';
 
   // ─── Estado interno ──────────────────────────────────────────
-  let transacaoAtualId = null;
-  let transacaoAtualTipo = null;
+  let transacaoAtualId   = null;
+  let transacaoAtualTipo = null;  // 'receita' | 'despesa' | 'reservado'
 
   // ─── Referências ao DOM ───────────────────────────────────────
-  const modal         = document.getElementById('modalReclassificacao');
-  const overlay       = document.getElementById('overlay-reclassificacao');
-  const btnClose      = document.getElementById('btn-close-reclassificacao');
-  const btnCancelar   = document.getElementById('btn-cancelar-reclassificacao');
-  const btnConfirmar  = document.getElementById('btn-confirmar-reclassificacao');
-  const btnLabel      = document.getElementById('btn-confirmar-label');
-  const btnSpinner    = document.getElementById('btn-confirmar-spinner');
-  const elDescricao   = document.getElementById('modal-descricao');
-  const elValor       = document.getElementById('modal-valor');
-  const selectMacro   = document.getElementById('select-macro');
-  const selectSub     = document.getElementById('select-subcategoria');
-  const chkLote       = document.getElementById('chk-aplicar-lote');
+  const modal              = document.getElementById('modalReclassificacao');
+  const overlay            = document.getElementById('overlay-reclassificacao');
+  const btnClose           = document.getElementById('btn-close-reclassificacao');
+  const btnCancelar        = document.getElementById('btn-cancelar-reclassificacao');
+  const btnConfirmar       = document.getElementById('btn-confirmar-reclassificacao');
+  const btnLabel           = document.getElementById('btn-confirmar-label');
+  const btnSpinner         = document.getElementById('btn-confirmar-spinner');
+  const elDescricao        = document.getElementById('modal-descricao');
+  const elValor            = document.getElementById('modal-valor');
+  const selectMacro        = document.getElementById('select-macro');
+  const selectSub          = document.getElementById('select-subcategoria');
+  const chkLote            = document.getElementById('chk-aplicar-lote');
+  const toggleEstorno      = document.getElementById('toggle-estorno');
+  const containerEstorno   = document.getElementById('container-toggle-estorno');
 
   if (!modal) return; // Página sem o modal → sai silenciosamente
 
@@ -58,6 +67,12 @@
     selectSub.innerHTML     = '<option value="">Primeiro selecione a macro…</option>';
     selectSub.disabled      = true;
     chkLote.checked         = false;
+    chkLote.disabled        = false;
+
+    // Reseta o toggle de estorno
+    if (toggleEstorno) toggleEstorno.checked = false;
+    if (containerEstorno) containerEstorno.classList.add('hidden');
+
     setBotaoConfirmar(false);
   }
 
@@ -72,15 +87,26 @@
   }
 
   // ─── População dos selects ────────────────────────────────────
+  /**
+   * @param {string} tipo - 'receita', 'despesa' ou 'reservado'
+   *   No modo estorno, `tipo` é forçado como 'despesa' pelo listener do toggle.
+   */
   function popularMacros(tipo) {
     const dados = (window.HORIZON_CATEGORIAS || {}).macros || [];
     selectMacro.innerHTML = '<option value="">Selecione uma macro categoria…</option>';
 
-    // Saídas genéricas incluem tanto 'despesa' quanto 'reservado' para
-    // permitir reclassificação direta como reserva/investimento
-    const tiposAceitos = (tipo === 'despesa' || tipo === 'reservado')
-      ? ['despesa', 'reservado']
-      : [tipo];
+    // Para saídas, aceita tanto 'despesa' quanto 'reservado'.
+    // Para estorno (passado explicitamente como 'despesa'), lista apenas despesas.
+    // Para receitas normais, lista apenas 'receita'.
+    let tiposAceitos;
+    if (tipo === 'despesa') {
+      tiposAceitos = ['despesa', 'reservado'];
+    } else if (tipo === 'despesa_estorno') {
+      // Modo estorno especial: apenas despesas (sem reservado)
+      tiposAceitos = ['despesa'];
+    } else {
+      tiposAceitos = ['receita'];
+    }
 
     dados
       .filter(m => tiposAceitos.includes(m.tipo))
@@ -113,20 +139,75 @@
     selectSub.disabled = false;
   }
 
+  // ─── Lógica do Toggle de Estorno ─────────────────────────────
+  function aplicarModoEstorno(ativo) {
+    if (ativo) {
+      // Modo estorno: lista somente categorias de despesa
+      popularMacros('despesa_estorno');
+      selectSub.innerHTML = '<option value="">Primeiro selecione a macro…</option>';
+      selectSub.disabled  = true;
+      setBotaoConfirmar(false);
+
+      // Desabilita o lote (estornos são sempre individuais)
+      if (chkLote) {
+        chkLote.checked  = false;
+        chkLote.disabled = true;
+      }
+    } else {
+      // Modo normal: restaura macros do tipo original da transação
+      popularMacros(transacaoAtualTipo);
+      selectSub.innerHTML = '<option value="">Primeiro selecione a macro…</option>';
+      selectSub.disabled  = true;
+      setBotaoConfirmar(false);
+
+      if (chkLote) chkLote.disabled = false;
+    }
+  }
+
+  if (toggleEstorno) {
+    toggleEstorno.addEventListener('change', function () {
+      aplicarModoEstorno(this.checked);
+    });
+  }
+
   // ─── API pública: chamada pelo onclick do botão de engrenagem ─
   window.abrirReclassificacao = function (btn) {
-    const id       = btn.dataset.id;
-    const descricao = btn.dataset.descricao;
-    const valor    = btn.dataset.valor;
-    const tipo     = btn.dataset.tipo;   // 'receita' | 'despesa' | 'reservado'
+    const id             = btn.dataset.id;
+    const descricao      = btn.dataset.descricao;
+    const valor          = btn.dataset.valor;
+    const tipo           = btn.dataset.tipo;  // 'receita' | 'despesa' | 'reservado'
+    const isEstornoSalvo = btn.dataset.isEstorno === 'true';
 
     transacaoAtualId   = id;
-    transacaoAtualTipo = tipo;
+    // Se a transação já for um estorno, o tipo visual original (para caso desmarque o toggle) é 'receita'.
+    transacaoAtualTipo = isEstornoSalvo ? 'receita' : tipo;
+    
+    // É uma entrada (crédito) se o tipo for receita OU se for um estorno de despesa (que também é entrada)
+    const isCredito = (tipo === 'receita') || isEstornoSalvo;
 
     elDescricao.textContent = descricao;
     elValor.textContent     = valor;
 
-    popularMacros(tipo);
+    // Mostra/oculta o toggle de estorno apenas para créditos (entradas)
+    if (containerEstorno) {
+      if (isCredito) {
+        containerEstorno.classList.remove('hidden');
+      } else {
+        containerEstorno.classList.add('hidden');
+      }
+    }
+    
+    // Inicia o toggle marcado se já for estorno no banco
+    if (toggleEstorno) toggleEstorno.checked = isEstornoSalvo;
+    if (chkLote) chkLote.disabled = isEstornoSalvo;
+
+    // Popula as macros baseado no estado inicial
+    if (isEstornoSalvo) {
+      popularMacros('despesa_estorno');
+    } else {
+      popularMacros(tipo);
+    }
+    
     selectSub.innerHTML = '<option value="">Primeiro selecione a macro…</option>';
     selectSub.disabled  = true;
     chkLote.checked     = false;
@@ -153,8 +234,9 @@
 
   // ─── Submit AJAX ──────────────────────────────────────────────
   btnConfirmar.addEventListener('click', async function () {
-    const categoriaId  = selectSub.value;
-    const aplicarLote  = chkLote.checked;
+    const categoriaId = selectSub.value;
+    const aplicarLote = chkLote.checked && !toggleEstorno?.checked;
+    const isEstorno   = toggleEstorno ? toggleEstorno.checked : false;
 
     if (!categoriaId || !transacaoAtualId) return;
 
@@ -174,6 +256,7 @@
           transacao_id: transacaoAtualId,
           categoria_id: categoriaId,
           aplicar_lote: aplicarLote,
+          is_estorno:   isEstorno,
         }),
       });
 

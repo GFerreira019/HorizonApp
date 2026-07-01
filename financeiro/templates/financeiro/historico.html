@@ -69,7 +69,7 @@
                             Não Classificado
                         </p>
                         {% else %}
-                        <p class="text-[11px] font-bold text-emerald-400 tracking-wide mt-0.5 truncate">
+                        <p class="text-[11px] font-bold text-cyan-400 tracking-wide mt-0.5 truncate">
                             {{ t.categoria.nome }}
                         </p>
                         {% endif %}
@@ -87,14 +87,11 @@
                     <span class="block text-sm font-bold tracking-tight {{ t.cor_tailwind }}">
                         {{ t.valor_formatado }}
                     </span>
-                    <button
-                        type="button"
+                    <button type="button"
                         class="h-8 w-8 rounded-xl bg-slate-800/60 border border-slate-700/50 flex items-center justify-center text-slate-400 hover:text-cyan-400 hover:border-cyan-500/40 hover:bg-cyan-500/10 active:scale-90 transition-all opacity-0 group-hover:opacity-100 focus:opacity-100"
-                        aria-label="Reclassificar transação"
-                        data-id="{{ t.id }}"
-                        data-descricao="{{ t.descricao }}"
-                        data-valor="{{ t.valor_formatado }}"
-                        data-tipo="{{ t.categoria.macro_categoria.tipo }}"
+                        aria-label="Reclassificar transação" data-id="{{ t.id }}" data-descricao="{{ t.descricao }}"
+                        data-valor="{{ t.valor_formatado }}" data-tipo="{{ t.categoria.macro_categoria.tipo }}"
+                        data-is-estorno="{{ t.is_estorno|yesno:'true,false' }}"
                         onclick="window.abrirReclassificacao(this)">
                         <i class="bi bi-gear text-sm pointer-events-none"></i>
                     </button>
@@ -155,20 +152,26 @@
 </div>
 
 {# ── Modal de Reclassificação ─────────────────────────────── #}
-<div id="modalReclassificacao" class="fixed inset-0 z-[60] hidden" role="dialog" aria-modal="true" aria-labelledby="modal-reclassificacao-title">
+<div id="modalReclassificacao" class="fixed inset-0 z-[60] hidden" role="dialog" aria-modal="true"
+    aria-labelledby="modal-reclassificacao-title">
     <div id="overlay-reclassificacao" class="fixed inset-0 bg-black/85 backdrop-blur-sm cursor-pointer"></div>
 
-    <div class="fixed inset-x-0 bottom-0 bg-[#0f172a] rounded-t-3xl border-t border-slate-700/60 shadow-2xl p-6 sm:max-w-md sm:mx-auto sm:relative sm:rounded-3xl sm:my-auto sm:top-1/2 sm:-translate-y-1/2 sm:bottom-auto">
+    <div
+        class="fixed inset-x-0 bottom-0 bg-[#0f172a] rounded-t-3xl border-t border-slate-700/60 shadow-2xl p-6 sm:max-w-md sm:mx-auto sm:relative sm:rounded-3xl sm:my-auto sm:top-1/2 sm:-translate-y-1/2 sm:bottom-auto">
 
         {# Cabeçalho #}
         <div class="flex justify-between items-center mb-5">
             <div class="flex items-center gap-3">
-                <div class="h-9 w-9 rounded-xl bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center">
+                <div
+                    class="h-9 w-9 rounded-xl bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center">
                     <i class="bi bi-tags text-cyan-400"></i>
                 </div>
-                <h3 id="modal-reclassificacao-title" class="text-base font-bold text-white">Reclassificar Lançamento</h3>
+                <h3 id="modal-reclassificacao-title" class="text-base font-bold text-white">Reclassificar Lançamento
+                </h3>
             </div>
-            <button type="button" id="btn-close-reclassificacao" class="h-8 w-8 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-all flex items-center justify-center" aria-label="Fechar">
+            <button type="button" id="btn-close-reclassificacao"
+                class="h-8 w-8 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-all flex items-center justify-center"
+                aria-label="Fechar">
                 <i class="bi bi-x-lg"></i>
             </button>
         </div>
@@ -181,9 +184,32 @@
 
         {# Formulário #}
         <div class="space-y-4">
+
+            {# ── Toggle Estorno/Reembolso (visível apenas para entradas) ── #}
+            <div id="container-toggle-estorno" class="hidden">
+                <label for="toggle-estorno"
+                    class="flex items-center gap-3 p-3.5 rounded-xl bg-amber-500/8 border border-amber-500/25 cursor-pointer hover:bg-amber-500/15 transition-colors group">
+                    <div class="relative shrink-0">
+                        <input type="checkbox" id="toggle-estorno" class="sr-only peer">
+                        <div class="w-10 h-6 rounded-full bg-slate-700 border border-slate-600 peer-checked:bg-amber-500 peer-checked:border-amber-400 transition-all duration-200"></div>
+                        <div class="absolute top-1 left-1 w-4 h-4 rounded-full bg-slate-400 peer-checked:bg-white peer-checked:translate-x-4 transition-all duration-200 shadow-sm"></div>
+                    </div>
+                    <div class="min-w-0">
+                        <p class="text-xs font-bold text-amber-300 leading-tight">
+                            <i class="bi bi-arrow-counterclockwise mr-1"></i>Marcar como Estorno / Reembolso
+                        </p>
+                        <p class="text-[10px] text-slate-400 mt-0.5 leading-relaxed">
+                            Ativa quando este crédito é um reembolso de despesa. O valor abate a categoria escolhida em vez de entrar como receita.
+                        </p>
+                    </div>
+                </label>
+            </div>
+
             {# Select Macro Categoria #}
             <div>
-                <label for="select-macro" class="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-2">Macro Categoria</label>
+                <label for="select-macro"
+                    class="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-2">Macro
+                    Categoria</label>
                 <select id="select-macro"
                     class="w-full bg-[#151e32] border border-slate-700 text-slate-200 text-sm rounded-xl px-3 py-3 focus:outline-none focus:border-cyan-500 transition-colors appearance-none">
                     <option value="">Selecione uma macro categoria…</option>
@@ -192,7 +218,8 @@
 
             {# Select Subcategoria #}
             <div>
-                <label for="select-subcategoria" class="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-2">Subcategoria</label>
+                <label for="select-subcategoria"
+                    class="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-2">Subcategoria</label>
                 <select id="select-subcategoria" disabled
                     class="w-full bg-[#151e32] border border-slate-700 text-slate-200 text-sm rounded-xl px-3 py-3 focus:outline-none focus:border-cyan-500 transition-colors appearance-none disabled:opacity-40 disabled:cursor-not-allowed">
                     <option value="">Primeiro selecione a macro…</option>
@@ -200,11 +227,12 @@
             </div>
 
             {# Checkbox lote #}
-            <label class="flex items-start gap-3 p-3 rounded-xl bg-amber-500/5 border border-amber-500/20 cursor-pointer hover:bg-amber-500/10 transition-colors">
-                <input type="checkbox" id="chk-aplicar-lote"
-                    class="mt-0.5 accent-amber-500 h-4 w-4 shrink-0">
+            <label
+                class="flex items-start gap-3 p-3 rounded-xl bg-amber-500/5 border border-amber-500/20 cursor-pointer hover:bg-amber-500/10 transition-colors">
+                <input type="checkbox" id="chk-aplicar-lote" class="mt-0.5 accent-amber-500 h-4 w-4 shrink-0">
                 <span class="text-xs text-amber-300 leading-relaxed">
-                    Aplicar a <strong>todas</strong> as transações antigas e futuras com a mesma descrição (cria regra automática)
+                    Aplicar a <strong>todas</strong> as transações antigas e futuras com a mesma descrição (cria regra
+                    automática)
                 </span>
             </label>
 
@@ -215,7 +243,8 @@
                     Cancelar
                 </button>
                 <button type="button" id="btn-excluir-transacao" onclick="excluirTransacaoAtual()"
-                    class="px-4 py-3 rounded-xl border border-red-500/30 text-red-400 hover:bg-red-500/10 active:scale-95 transition-all flex items-center justify-center" aria-label="Excluir Transação">
+                    class="px-4 py-3 rounded-xl border border-red-500/30 text-red-400 hover:bg-red-500/10 active:scale-95 transition-all flex items-center justify-center"
+                    aria-label="Excluir Transação">
                     <i class="bi bi-trash text-lg pointer-events-none"></i>
                 </button>
                 <button type="button" id="btn-confirmar-reclassificacao"
@@ -236,7 +265,7 @@
 {% block scripts %}
 <script>
     // Dados de categorias injetados pelo backend
-    window.HORIZON_CATEGORIAS = {{ categorias_reclassificacao_json|safe }};
+    window.HORIZON_CATEGORIAS = {{ categorias_reclassificacao_json | safe }};
     window.HORIZON_URLS = {
         reclassificar: "{% url 'reclassificar_transacao_ajax' %}"
     };

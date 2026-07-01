@@ -38,6 +38,30 @@
         
         <div class="flex flex-col gap-2 mt-4 bg-[#0f172a] p-3 rounded-xl border border-slate-700/50">
 
+            {% if t.categoria.macro_categoria.tipo == 'receita' %}
+            {# ── Toggle Estorno (apenas para entradas/créditos) ── #}
+            <label for="estorno-{{ t.id }}"
+                class="flex items-center gap-3 p-3 rounded-lg bg-amber-500/8 border border-amber-500/20 cursor-pointer hover:bg-amber-500/12 transition-colors">
+                <div class="relative shrink-0">
+                    <input type="checkbox"
+                        id="estorno-{{ t.id }}"
+                        class="sr-only peer toggle-estorno-audit"
+                        data-transacao-id="{{ t.id }}"
+                        data-tipo-original="{{ t.categoria.macro_categoria.tipo }}">
+                    <div class="w-9 h-5 rounded-full bg-slate-700 border border-slate-600 peer-checked:bg-amber-500 peer-checked:border-amber-400 transition-all duration-200"></div>
+                    <div class="absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-slate-400 peer-checked:bg-white peer-checked:translate-x-4 transition-all duration-200 shadow-sm"></div>
+                </div>
+                <div>
+                    <p class="text-[11px] font-bold text-amber-300 leading-tight">
+                        <i class="bi bi-arrow-counterclockwise mr-1"></i>Estorno / Reembolso de Despesa
+                    </p>
+                    <p class="text-[10px] text-slate-500 mt-0.5">
+                        Abate da categoria de despesa em vez de contabilizar como receita
+                    </p>
+                </div>
+            </label>
+            {% endif %}
+
             {# Select 1: Macro Categoria (linha inteira) #}
             <div>
                 <label for="macro-{{ t.id }}" class="text-[9px] font-bold text-slate-500 uppercase tracking-wider block mb-1">Macro Categoria</label>
@@ -115,16 +139,24 @@
         return hiddenInput ? hiddenInput.value : '';
     }
 
-    // ─── População de macros ────────────────────────────────────────────────
+    // ─── Preenche macros conforme tipo da transação (ou modo estorno) ──────────
     /**
-     * Preenche o <select> de Macro Categoria conforme o tipo da transação.
-     * Saídas (despesa/reservado) exibem ambos os tipos para permitir
-     * reclassificação direta como reserva/investimento.
+     * @param {HTMLElement} selectEl - O elemento select a preencher
+     * @param {string} tipoTransacao - 'receita', 'despesa', 'reservado' ou 'despesa_estorno'
+     *
+     * Saídas (despesa/reservado) exibem ambos para reclassificação como reserva.
+     * Modo estorno ('despesa_estorno'): exibe apenas 'despesa' para abatimento.
      */
     function popularMacrosAudit(selectEl, tipoTransacao) {
-        const tiposAceitos = (tipoTransacao === 'despesa' || tipoTransacao === 'reservado')
-            ? ['despesa', 'reservado']
-            : ['receita'];
+        let tiposAceitos;
+        if (tipoTransacao === 'despesa_estorno') {
+            // Modo estorno: somente categorias de despesa (sem reservado)
+            tiposAceitos = ['despesa'];
+        } else if (tipoTransacao === 'despesa' || tipoTransacao === 'reservado') {
+            tiposAceitos = ['despesa', 'reservado'];
+        } else {
+            tiposAceitos = ['receita'];
+        }
 
         selectEl.innerHTML = '<option value="">Selecione a macro categoria…</option>';
         AUDIT_MACROS
@@ -175,12 +207,15 @@
     // ─── Consolidação individual ──────────────────────────────────────────────
     /**
      * Lê estritamente #cat-{transacaoId} e envia o payload ao backend.
+     * Inclui is_estorno se o toggle de estorno estiver ativo para esta transação.
      */
     async function consolidarIndividual(transacaoId) {
-        const selectCat   = document.getElementById(`cat-${transacaoId}`);
-        const checkRegra  = document.getElementById(`regra-${transacaoId}`);
-        const btn         = document.getElementById(`btn-${transacaoId}`);
-        const categoriaId = selectCat ? selectCat.value : '';
+        const selectCat    = document.getElementById(`cat-${transacaoId}`);
+        const checkRegra   = document.getElementById(`regra-${transacaoId}`);
+        const checkEstorno = document.getElementById(`estorno-${transacaoId}`);
+        const btn          = document.getElementById(`btn-${transacaoId}`);
+        const categoriaId  = selectCat ? selectCat.value : '';
+        const isEstorno    = checkEstorno ? checkEstorno.checked : false;
 
         if (!categoriaId) {
             if (selectCat) {
@@ -203,7 +238,8 @@
                 },
                 body: JSON.stringify({
                     categoria_id: categoriaId,
-                    criar_regra:  checkRegra ? checkRegra.checked : false,
+                    criar_regra:  (checkRegra && !isEstorno) ? checkRegra.checked : false,
+                    is_estorno:   isEstorno,
                 }),
             });
 
@@ -324,6 +360,46 @@
             button.addEventListener('click', function (event) {
                 event.preventDefault();
                 consolidarIndividual(this.getAttribute('data-transacao-id'));
+            });
+        });
+
+        // PASSO 6 — Listener dos toggles de Estorno
+        // Quando ativado: re-popula macros com apenas 'despesa' (modo estorno)
+        // Quando desativado: restaura macros do tipo original da transação
+        document.querySelectorAll('.toggle-estorno-audit').forEach(function (toggle) {
+            toggle.addEventListener('change', function () {
+                const transacaoId  = this.getAttribute('data-transacao-id');
+                const tipoOriginal = this.getAttribute('data-tipo-original');
+                const selectMacro  = document.getElementById(`macro-${transacaoId}`);
+                const selectCat    = document.getElementById(`cat-${transacaoId}`);
+                const btnAudit     = document.getElementById(`btn-${transacaoId}`);
+                const checkRegra   = document.getElementById(`regra-${transacaoId}`);
+
+                const tipoParaPopular = this.checked ? 'despesa_estorno' : tipoOriginal;
+                popularMacrosAudit(selectMacro, tipoParaPopular);
+
+                // Reseta subcategoria e botão
+                if (selectCat) {
+                    selectCat.innerHTML = '<option value="">Primeiro selecione a macro…</option>';
+                    selectCat.disabled  = true;
+                    if (typeof jQuery !== 'undefined' && $.fn.select2) {
+                        $(`#cat-${transacaoId}`).trigger('change');
+                    }
+                }
+                if (btnAudit) btnAudit.disabled = true;
+
+                // Desabilita o checkbox de regra quando em modo estorno
+                if (checkRegra) {
+                    checkRegra.disabled = this.checked;
+                    if (this.checked) checkRegra.checked = false;
+                }
+
+                // Força atualização do Select2 no select de macro
+                if (typeof jQuery !== 'undefined' && $.fn.select2) {
+                    $(`#macro-${transacaoId}`).trigger('change.select2');
+                    // Re-inicializa para refletir as novas opções
+                    $(`#macro-${transacaoId}`).val(null).trigger('change');
+                }
             });
         });
     });

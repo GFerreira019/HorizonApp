@@ -89,7 +89,9 @@
         var secaoHistorico = document.getElementById('secaoHistoricoReceita');
         var btnExcluir = document.getElementById('receitaBtnExcluir');
 
-        if (secaoVincular)  secaoVincular.classList.toggle('hidden', !ativo);
+        // A secção de vínculo é SEMPRE visível (criação e edição),
+        // pois o utilizador pode querer definir um padrão desde o início.
+        if (secaoVincular)  secaoVincular.classList.remove('hidden');
         if (secaoHistorico) secaoHistorico.classList.toggle('hidden', !ativo);
         if (btnExcluir)     btnExcluir.classList.toggle('hidden', !ativo);
 

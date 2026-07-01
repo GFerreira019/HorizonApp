@@ -369,6 +369,11 @@ class Transacao(models.Model):
     fixo = models.BooleanField(default=False)
     importada_automatica = models.BooleanField(default=False)
     ignorado = models.BooleanField(default=False, help_text="Se True, a transação sofreu soft-delete e será ocultada dos cálculos e dashboards.")
+    is_estorno = models.BooleanField(
+        default=False,
+        help_text="Se True, esta entrada (crédito) representa um estorno/reembolso de uma categoria de Despesa. "
+                  "O valor abate o gasto real da categoria, em vez de contabilizar como receita."
+    )
     
     lote = models.ForeignKey(LoteImportacao, on_delete=models.CASCADE, null=True, blank=True, related_name='transacoes_lote')
     despesa_fixa = models.ForeignKey(DespesaFixa, on_delete=models.SET_NULL, null=True, blank=True, related_name='transacoes_realizadas')
@@ -414,17 +419,22 @@ class Transacao(models.Model):
 
     @property
     def is_receita(self):
-        return self.categoria.macro_categoria.tipo == 'receita'
+        """True se a transação é uma receita pura (excluindo estornos)."""
+        return self.categoria.macro_categoria.tipo == 'receita' and not self.is_estorno
 
     @property
     def valor_formatado(self):
-        if self.is_receita:
+        if self.is_estorno:
+            return f"↩ R$ {self.valor:.2f}"  # Estorno: seta de retorno para diferenciar visualmente
+        if self.categoria.macro_categoria.tipo == 'receita':
             return f"+ R$ {self.valor:.2f}"
         return f"- R$ {self.valor:.2f}"
 
     @property
     def cor_tailwind(self):
-        if self.is_receita:
+        if self.is_estorno:
+            return "text-amber-400"  # Cor âmbar para diferenciar estornos de receitas e despesas normais
+        if self.categoria.macro_categoria.tipo == 'receita':
             return "text-emerald-400"
         return "text-red-500"
 
@@ -672,10 +682,20 @@ class PerfilUsuario(models.Model):
         max_length=50, null=True, blank=True,
         help_text="ID do chat do Telegram para notificações do Guardião",
     )
+    
+    saldo_bancario_sync = models.DecimalField(max_digits=15, decimal_places=2, default=Decimal('0.00'))
+    saldo_manual = models.DecimalField(max_digits=15, decimal_places=2, default=Decimal('0.00'))
+    usar_saldo_manual = models.BooleanField(default=False)
 
     class Meta:
         verbose_name = 'Perfil do Usuário'
         verbose_name_plural = 'Perfis de Usuários'
+
+    @property
+    def saldo_livre_atual(self) -> Decimal:
+        if self.usar_saldo_manual:
+            return self.saldo_manual
+        return self.saldo_bancario_sync
 
     def __str__(self) -> str:
         return f"Perfil de {self.usuario.get_full_name() or self.usuario.username}"

@@ -1,11 +1,8 @@
-const CACHE_NAME = 'horizonapp-static-v2';
-const DYNAMIC_CACHE_NAME = 'horizonapp-dynamic-v2';
+const CACHE_NAME = 'horizonapp-static-v4';
 
-// Recursos estáticos fundamentais (Cache First)
+// Recursos estáticos fundamentais (Cache First / Precaching)
 const STATIC_RESOURCES = [
-  '/',
   '/manifest.json',
-  // Arquivos estáticos do projeto poderão ser cacheados na requisição.
 ];
 
 // Instalação do Service Worker
@@ -24,7 +21,7 @@ self.addEventListener('activate', (event) => {
     caches.keys().then((cacheNames) => {
       return Promise.all(
         cacheNames
-          .filter((name) => name !== CACHE_NAME && name !== DYNAMIC_CACHE_NAME)
+          .filter((name) => name !== CACHE_NAME)
           .map((name) => caches.delete(name))
       );
     })
@@ -39,42 +36,39 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  const url = new URL(event.request.url);
-
   // Somente lidar com requisições GET
   if (event.request.method !== 'GET') {
     return;
   }
 
-  // Se a requisição for para o diretório de estáticos (/static/), aplica Cache First
-  if (url.pathname.startsWith('/static/')) {
-    event.respondWith(
-      caches.match(event.request).then((cachedResponse) => {
-        if (cachedResponse) {
-          return cachedResponse;
-        }
-        return fetch(event.request).then((networkResponse) => {
-          return caches.open(CACHE_NAME).then((cache) => {
-            cache.put(event.request, networkResponse.clone());
-            return networkResponse;
-          });
+  // Estratégia de Fetch:
+  // - Recursos estáticos (/static/, CDNs): Network First com cache fallback
+  // - Páginas HTML dinâmicas do Django: Network Only (sem cache)
+  //   Cachear HTMLs do Django causa bugs graves: tags de template como
+  //   {{ variavel }} são renderizadas no servidor e se tornam texto literal
+  //   quando servidas a partir do cache do Service Worker.
+
+  const url = new URL(event.request.url);
+  const isStaticResource = url.pathname.startsWith('/static/')
+    || url.pathname === '/manifest.json'
+    || url.origin !== self.location.origin;  // CDNs externas
+
+  if (!isStaticResource) {
+    // Páginas dinâmicas: sempre buscar da rede, sem fallback de cache
+    return;
+  }
+
+  // Recursos estáticos: Network First com fallback de cache (offline)
+  event.respondWith(
+    fetch(event.request)
+      .then((networkResponse) => {
+        return caches.open(CACHE_NAME).then((cache) => {
+          cache.put(event.request, networkResponse.clone());
+          return networkResponse;
         });
       })
-    );
-  } else {
-    // Para rotas do Django (dinâmicas), aplica Network First
-    event.respondWith(
-      fetch(event.request)
-        .then((networkResponse) => {
-          return caches.open(DYNAMIC_CACHE_NAME).then((cache) => {
-            cache.put(event.request, networkResponse.clone());
-            return networkResponse;
-          });
-        })
-        .catch(() => {
-          // Fallback para o cache em caso de falha de rede
-          return caches.match(event.request);
-        })
-    );
-  }
+      .catch(() => {
+        return caches.match(event.request);
+      })
+  );
 });

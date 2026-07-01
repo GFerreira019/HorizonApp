@@ -23,7 +23,14 @@ from django.contrib.auth import get_user_model
 from financeiro.signals import ICONES_MACRO
 
 # Imports locais
-from .services import processar_extrato_nubank, sincronizar_transacoes_open_finance, PluggyAPIClient, verificar_limite_e_notificar, get_envelopes_progresso
+from .services import (
+    processar_extrato_nubank,
+    sincronizar_transacoes_open_finance,
+    PluggyAPIClient,
+    verificar_limite_e_notificar,
+    get_envelopes_progresso,
+    criar_regra_e_reclassificar,
+)
 from .telegram_bot import enviar_mensagem_telegram
 from .models import (
     Transacao,
@@ -240,25 +247,51 @@ def dashboard(request: HttpRequest) -> HttpResponse:
             orcamento_por_macro[orc.macro_categoria_id] = float(orc.valor_planejado)
 
     # Agrega o gasto real por macro-categoria (despesa) no período filtrado
-    gastos_por_macro = (
+    # Exclui estornos da soma normal — estornos serão subtraídos separadamente
+    gastos_normais_macro = (
         Transacao.objects.filter(
             query_filtro,
             categoria__macro_categoria__tipo='despesa',
+            is_estorno=False,
         )
         .values('categoria__macro_categoria__id', 'categoria__macro_categoria__nome')
         .annotate(total=Sum('valor'))
         .order_by('categoria__macro_categoria__nome')
     )
 
-    # Combina macros com gastos e macros que só têm orçamento (sem gastos ainda)
+    # Estornos agrupados por macro para abatimento
+    estornos_por_macro = {
+        item['categoria__macro_categoria__id']: float(item['total'])
+        for item in Transacao.objects.filter(
+            query_filtro,
+            categoria__macro_categoria__tipo='despesa',
+            is_estorno=True,
+        )
+        .values('categoria__macro_categoria__id')
+        .annotate(total=Sum('valor'))
+    }
+
+    # Combina macros com gastos efetivos (normal - estorno) e macros só com orçamento
     macros_com_dados: Dict[int, Dict[str, Any]] = {}
-    for item in gastos_por_macro:
+    for item in gastos_normais_macro:
         macro_id = item['categoria__macro_categoria__id']
+        gasto_bruto = float(item['total'])
+        estorno = estornos_por_macro.get(macro_id, 0.0)
+        realizado_efetivo = max(0.0, gasto_bruto - estorno)
         macros_com_dados[macro_id] = {
             'nome': item['categoria__macro_categoria__nome'],
             'planejado': orcamento_por_macro.get(macro_id, 0.0),
-            'realizado': float(item['total']),
+            'realizado': realizado_efetivo,
         }
+
+    # Macros que têm estorno mas nenhum gasto normal no período
+    for macro_id, valor_estorno in estornos_por_macro.items():
+        if macro_id not in macros_com_dados:
+            macros_com_dados[macro_id] = {
+                'nome': '',  # será preenchido abaixo se tiver orçamento
+                'planejado': orcamento_por_macro.get(macro_id, 0.0),
+                'realizado': 0.0,  # gasto efetivo 0 (estorno sem compra = mín. 0)
+            }
 
     # Inclui macros que têm orçamento mas nenhum gasto no período
     for macro_id, valor_plan in orcamento_por_macro.items():
@@ -284,8 +317,62 @@ def dashboard(request: HttpRequest) -> HttpResponse:
         'realizado': macros_realizado,
     }
 
+    # -------------------------------------------------------------------------
+    # Dataset 3 — Modal de Vencimentos do Mês (Custos Fixos)
+    # -------------------------------------------------------------------------
+    despesas_fixas = DespesaFixa.objects.filter(
+        usuario=user,
+        ativo=True,
+        tem_vencimento=True
+    )
+    
+    modal_vencimentos_mes = []
+    for despesa in despesas_fixas:
+        transacoes_pagas = Transacao.objects.filter(
+            Q(despesa_fixa=despesa) | Q(categoria=despesa.categoria),
+            usuario=user,
+            data__month=mes,
+            data__year=ano_param,
+            ignorado=False,
+            pago=True
+        )
+        
+        valor_real_pago = transacoes_pagas.aggregate(total=Sum('valor'))['total'] or Decimal('0.00')
+        valor_real_pago = float(valor_real_pago)
+        valor_previsto = float(despesa.valor_previsto)
+        
+        limite_minimo = valor_previsto * 0.90
+        
+        status_pago = False
+        diferenca = 0.0
+        exibir_desvio = False
+        
+        if valor_real_pago > 0:
+            if valor_real_pago >= limite_minimo:
+                status_pago = True
+            
+            diferenca = valor_real_pago - valor_previsto
+            if abs(diferenca) > 0.01:
+                exibir_desvio = True
+                
+        modal_vencimentos_mes.append({
+            'nome': despesa.nome,
+            'valor_previsto': valor_previsto,
+            'dia_vencimento': despesa.dia_vencimento,
+            'status_pago': status_pago,
+            'diferenca': abs(diferenca),
+            'pagou_a_mais': diferenca > 0,
+            'pagou_a_menos': diferenca < 0,
+            'exibir_desvio': exibir_desvio
+        })
+        
+    modal_vencimentos_mes.sort(key=lambda x: x['dia_vencimento'])
+    
+    perfil, _ = PerfilUsuario.objects.get_or_create(usuario=user)
+
     context = {
         'titulo': 'Fluxo de Caixa',
+        'perfil': perfil,
         'saldo': saldo_atual,
         'receitas': receitas,
         'despesas': despesas,
@@ -303,6 +390,7 @@ def dashboard(request: HttpRequest) -> HttpResponse:
         'dados_macros_json': json.dumps(dados_macros),
         # Dados de progresso de envelopes
         'envelopes_progresso': get_envelopes_progresso(user, mes, ano_param),
+        'modal_vencimentos_mes': modal_vencimentos_mes,
     }
     return render(request, 'financeiro/dashboard.html', context)
 
@@ -507,20 +595,47 @@ def toggle_pago(request: HttpRequest, pk: int) -> HttpResponse:
 def get_chart_data(request: HttpRequest) -> JsonResponse:
     """
     Fornece dados agregados para gráficos, como total por Macro Categoria, com filtros de período e tipo.
+    Aplica a lógica de abatimento de estornos: Gasto Efetivo = Normais - Estornos.
     """
     periodo = request.GET.get('periodo')
     mes = request.GET.get('mes')
     ano = request.GET.get('ano')
     
-    query = Q(usuario=request.user, categoria__macro_categoria__tipo='despesa', ignorado=False)
+    base_query = Q(usuario=request.user, categoria__macro_categoria__tipo='despesa', ignorado=False)
     
     if periodo != 'tudo' and mes and ano:
-        query &= Q(data__month=mes, data__year=ano)
+        base_query &= Q(data__month=mes, data__year=ano)
     
-    dados = Transacao.objects.filter(query).values('categoria__macro_categoria__nome').annotate(total=Sum('valor')).order_by('-total')
+    # Gastos normais por macro
+    dados_normais = (
+        Transacao.objects.filter(base_query, is_estorno=False)
+        .values('categoria__macro_categoria__nome')
+        .annotate(total=Sum('valor'))
+        .order_by('-total')
+    )
 
-    labels = [item['categoria__macro_categoria__nome'] for item in dados]
-    values = [float(item['total']) for item in dados]
+    # Estornos por macro
+    dados_estornos = {
+        item['categoria__macro_categoria__nome']: float(item['total'])
+        for item in Transacao.objects.filter(base_query, is_estorno=True)
+        .values('categoria__macro_categoria__nome')
+        .annotate(total=Sum('valor'))
+    }
+
+    # Combina: gasto efetivo = normal - estorno (mínimo 0)
+    resultado = {}
+    for item in dados_normais:
+        nome = item['categoria__macro_categoria__nome']
+        gasto_bruto = float(item['total'])
+        estorno = dados_estornos.get(nome, 0.0)
+        efetivo = max(0.0, gasto_bruto - estorno)
+        if efetivo > 0:  # Omite categorias com gasto líquido zero do gráfico
+            resultado[nome] = efetivo
+
+    # Ordena por valor decrescente
+    resultado_ordenado = sorted(resultado.items(), key=lambda x: x[1], reverse=True)
+    labels = [item[0] for item in resultado_ordenado]
+    values = [item[1] for item in resultado_ordenado]
 
     return JsonResponse({'labels': labels, 'values': values})
 
@@ -529,6 +644,7 @@ def get_chart_data(request: HttpRequest) -> JsonResponse:
 def consolidar_transacao_ajax(request: HttpRequest, pk: int) -> JsonResponse:
     """
     Consolida uma transação pendente, atribuindo a categoria selecionada e opcionalmente criando uma regra de classificação.
+    Aceita o campo `is_estorno` para marcar entradas (créditos) como estorno/reembolso de despesa.
     """
     if request.method != 'POST':
         return JsonResponse({'status': 'invalid_method'}, status=405)
@@ -537,17 +653,26 @@ def consolidar_transacao_ajax(request: HttpRequest, pk: int) -> JsonResponse:
         data = json.loads(request.body)
         categoria_id = data.get('categoria_id')
         criar_regra = data.get('criar_regra', False)
+        is_estorno = bool(data.get('is_estorno', False))
         
         transacao = get_object_or_404(Transacao, pk=pk, usuario=request.user)
         categoria = get_object_or_404(Categoria, pk=categoria_id, usuario=request.user)
+
+        # Validação: estorno só é permitido se a categoria destino for de despesa
+        if is_estorno and categoria.macro_categoria.tipo != 'despesa':
+            return JsonResponse(
+                {'status': 'error', 'mensagem': 'Estorno/Reembolso só pode ser direcionado a uma categoria de Despesa.'},
+                status=400
+            )
         
         transacao.categoria = categoria
+        transacao.is_estorno = is_estorno
         transacao.status_auditoria = 'consolidado'
-        transacao.save(update_fields=['categoria', 'status_auditoria'])
+        transacao.save(update_fields=['categoria', 'is_estorno', 'status_auditoria'])
         
         ids_consolidados = [transacao.id]
         
-        if criar_regra:
+        if criar_regra and not is_estorno:  # Regras automáticas não se aplicam a estornos
             desc_limpa = transacao.descricao.replace("Compra no débito - ", "") \
                                             .replace("Transferência enviada pelo Pix - ", "") \
                                             .replace("Transferência recebida pelo Pix - ", "") \
@@ -590,7 +715,8 @@ def reclassificar_transacao_ajax(request: HttpRequest) -> JsonResponse:
         {
             "transacao_id": <int>,
             "categoria_id": <int>,
-            "aplicar_lote": <bool>   # true → cria regra + atualiza todos com mesma descrição
+            "aplicar_lote": <bool>,   # true → cria regra + atualiza todos com mesma descrição
+            "is_estorno": <bool>      # true → marca como estorno/reembolso de despesa
         }
 
     Retorno:
@@ -604,15 +730,24 @@ def reclassificar_transacao_ajax(request: HttpRequest) -> JsonResponse:
         transacao_id = body.get('transacao_id')
         categoria_id = body.get('categoria_id')
         aplicar_lote = bool(body.get('aplicar_lote', False))
+        is_estorno = bool(body.get('is_estorno', False))
 
         transacao = get_object_or_404(Transacao, pk=transacao_id, usuario=request.user)
         categoria = get_object_or_404(Categoria, pk=categoria_id, usuario=request.user)
 
-        if not aplicar_lote:
-            # Atualiza apenas esta transação
+        # Validação: estorno só pode ser direcionado a categoria de despesa
+        if is_estorno and categoria.macro_categoria.tipo != 'despesa':
+            return JsonResponse(
+                {'status': 'error', 'mensagem': 'Estorno/Reembolso só pode ser direcionado a uma categoria de Despesa.'},
+                status=400
+            )
+
+        if not aplicar_lote or is_estorno:
+            # Modo individual — ou estorno (que nunca é aplicado em lote)
             transacao.categoria = categoria
+            transacao.is_estorno = is_estorno
             transacao.status_auditoria = Transacao.StatusAuditoria.CONSOLIDADO
-            transacao.save(update_fields=['categoria', 'status_auditoria'])
+            transacao.save(update_fields=['categoria', 'is_estorno', 'status_auditoria'])
             return JsonResponse({'status': 'success', 'atualizadas': 1})
 
         # Modo lote: cria/atualiza regra e reclassifica todas as transações com a mesma descrição
@@ -1032,7 +1167,11 @@ def controle_gastos_fixos(request: HttpRequest) -> HttpResponse:
 @login_required
 def cadastrar_despesa_fixa_direta(request):
     """
-    Cadastra uma despesa fixa diretamente no banco de dados
+    Cadastra uma despesa fixa diretamente no banco de dados.
+
+    Se o formulário incluir uma `transacao_padrao_id`, cria automaticamente
+    uma RegraClassificacao e aplica reclassificação retroativa em batch
+    nas transações históricas pendentes do utilizador.
     """
     if request.method == 'POST':
         form = DespesaFixaForm(request.POST, user=request.user)
@@ -1043,24 +1182,23 @@ def cadastrar_despesa_fixa_direta(request):
 
             transacao_padrao_id = request.POST.get('transacao_padrao_id')
             if transacao_padrao_id:
-                t_padrao = Transacao.objects.filter(id=transacao_padrao_id, usuario=request.user).first()
+                t_padrao = Transacao.objects.filter(
+                    id=transacao_padrao_id, usuario=request.user
+                ).first()
                 if t_padrao:
-                    desc_limpa = t_padrao.descricao.replace("Compra no débito - ", "") \
-                                                   .replace("Transferência enviada pelo Pix - ", "") \
-                                                   .replace("Transferência recebida pelo Pix - ", "") \
-                                                   .strip()
-                    regra, created = RegraClassificacao.objects.get_or_create(
+                    qtd = criar_regra_e_reclassificar(
                         usuario=request.user,
-                        palavra_chave=desc_limpa,
-                        defaults={'categoria': despesa.categoria, 'despesa_vinculada': despesa}
+                        transacao_padrao=t_padrao,
+                        categoria=despesa.categoria,
+                        despesa_fixa=despesa,
                     )
-                    if not created:
-                        regra.despesa_vinculada = despesa
-                        regra.save(update_fields=['despesa_vinculada'])
-                    Transacao.objects.filter(
-                        Q(id=t_padrao.id) | Q(descricao__icontains=desc_limpa),
-                        usuario=request.user
-                    ).update(despesa_fixa=despesa)
+                    messages.success(
+                        request,
+                        f"Plano para '{despesa.nome}' cadastrado! "
+                        f"{qtd} lançamento(s) reclassificado(s) automaticamente.",
+                    )
+                    return _redirect_pos_fixo(request)
+
             messages.success(request, f"Plano para '{despesa.nome}' cadastrado com sucesso!")
         else:
             messages.error(request, "Erro ao validar o cadastro da conta fixa.")
@@ -1136,10 +1274,14 @@ def detalhes_despesa_fixa_ajax(request: HttpRequest, pk: int) -> JsonResponse:
 @login_required
 def editar_despesa_fixa(request: HttpRequest, pk: int) -> HttpResponse:
     """
-    Edita a despesa fixa
+    Edita a despesa fixa.
+
+    Se o formulário incluir uma `transacao_padrao_id_edicao`, cria ou atualiza
+    uma RegraClassificacao e aplica reclassificação retroativa em batch
+    nas transações históricas pendentes do utilizador.
     """
     despesa = get_object_or_404(DespesaFixa, pk=pk, usuario=request.user)
-    
+
     if request.method == 'POST':
         despesa.nome = request.POST.get('nome')
         despesa.valor_previsto = request.POST.get('valor_previsto').replace(',', '.')
@@ -1154,21 +1296,22 @@ def editar_despesa_fixa(request: HttpRequest, pk: int) -> HttpResponse:
 
         transacao_padrao_id = request.POST.get('transacao_padrao_id_edicao')
         if transacao_padrao_id:
-            t_padrao = Transacao.objects.filter(id=transacao_padrao_id, usuario=request.user).first()
+            t_padrao = Transacao.objects.filter(
+                id=transacao_padrao_id, usuario=request.user
+            ).first()
             if t_padrao:
-                desc_limpa = t_padrao.descricao.replace("Compra no débito - ", "").replace("Transferência enviada pelo Pix - ", "").replace("Transferência recebida pelo Pix - ", "").strip()
-                regra, created = RegraClassificacao.objects.get_or_create(
-                    usuario=request.user, palavra_chave=desc_limpa,
-                    defaults={'categoria': despesa.categoria, 'despesa_vinculada': despesa}
+                qtd = criar_regra_e_reclassificar(
+                    usuario=request.user,
+                    transacao_padrao=t_padrao,
+                    categoria=despesa.categoria,
+                    despesa_fixa=despesa,
                 )
-                if not created:
-                    regra.despesa_vinculada = despesa
-                    regra.save(update_fields=['despesa_vinculada'])
-                    
-                Transacao.objects.filter(
-                    Q(id=t_padrao.id) | Q(descricao__icontains=desc_limpa),
-                    usuario=request.user
-                ).update(despesa_fixa=despesa)
+                messages.success(
+                    request,
+                    f"Conta fixa atualizada! "
+                    f"{qtd} lançamento(s) reclassificado(s) automaticamente.",
+                )
+                return _redirect_pos_fixo(request)
 
         messages.success(request, "Conta fixa atualizada com sucesso!")
     return _redirect_pos_fixo(request)
@@ -1186,6 +1329,13 @@ def excluir_despesa_fixa(request: HttpRequest, pk: int) -> HttpResponse:
 
 @login_required
 def cadastrar_receita_planejada(request: HttpRequest) -> HttpResponse:
+    """
+    Cadastra uma nova fonte de receita planejada.
+
+    Se o formulário incluir uma `transacao_padrao_id`, cria automaticamente
+    uma RegraClassificacao e aplica reclassificação retroativa em batch
+    nas transações históricas pendentes do utilizador.
+    """
     if request.method == 'POST':
         form = ReceitaPlanejadaForm(request.POST, user=request.user)
         if form.is_valid():
@@ -1195,6 +1345,26 @@ def cadastrar_receita_planejada(request: HttpRequest) -> HttpResponse:
             if macro_id and not receita.macro_categoria_id:
                 receita.macro_categoria_id = int(macro_id)
             receita.save()
+
+            transacao_padrao_id = request.POST.get('transacao_padrao_id')
+            if transacao_padrao_id:
+                t_padrao = Transacao.objects.filter(
+                    id=transacao_padrao_id, usuario=request.user
+                ).first()
+                if t_padrao:
+                    qtd = criar_regra_e_reclassificar(
+                        usuario=request.user,
+                        transacao_padrao=t_padrao,
+                        categoria=receita.categoria,
+                        receita_planejada=receita,
+                    )
+                    messages.success(
+                        request,
+                        f"Receita '{receita.nome}' cadastrada! "
+                        f"{qtd} lançamento(s) reclassificado(s) automaticamente.",
+                    )
+                    return _redirect_pos_fixo(request)
+
             messages.success(request, f"Receita '{receita.nome}' cadastrada com sucesso!")
         else:
             messages.error(request, "Erro ao validar o cadastro da receita planejada.")
@@ -1205,8 +1375,10 @@ def cadastrar_receita_planejada(request: HttpRequest) -> HttpResponse:
 def editar_receita_planejada(request: HttpRequest, pk: int) -> HttpResponse:
     """
     Edita uma fonte de receita planejada existente.
-    Processa o vínculo de uma transação padrão para criar uma RegraClassificacao
-    de entradas, automatizando a classificação futura.
+
+    Se o formulário incluir uma `transacao_padrao_id`, cria ou atualiza
+    uma RegraClassificacao e aplica reclassificação retroativa em batch
+    nas transações históricas pendentes do utilizador.
     """
     receita = get_object_or_404(ReceitaPlanejada, pk=pk, usuario=request.user)
     if request.method == 'POST':
@@ -1228,27 +1400,24 @@ def editar_receita_planejada(request: HttpRequest, pk: int) -> HttpResponse:
             receita.macro_categoria_id = receita.categoria.macro_categoria_id
         receita.save()
 
-        # Vincula transacao padrao para criar regra de classificação automática
         transacao_padrao_id = request.POST.get('transacao_padrao_id')
         if transacao_padrao_id:
-            t_padrao = Transacao.objects.filter(id=transacao_padrao_id, usuario=request.user).first()
+            t_padrao = Transacao.objects.filter(
+                id=transacao_padrao_id, usuario=request.user
+            ).first()
             if t_padrao:
-                desc_limpa = t_padrao.descricao.split('-', 1)[1].strip() if '-' in t_padrao.descricao else t_padrao.descricao
-                regra, created = RegraClassificacao.objects.get_or_create(
+                qtd = criar_regra_e_reclassificar(
                     usuario=request.user,
-                    palavra_chave=desc_limpa,
-                    defaults={'categoria': receita.categoria, 'receita_vinculada': receita},
+                    transacao_padrao=t_padrao,
+                    categoria=receita.categoria,
+                    receita_planejada=receita,
                 )
-                if not created:
-                    # Atualiza o vínculo mesmo que a regra já existisse para outro provisionamento
-                    regra.receita_vinculada = receita
-                    regra.save(update_fields=['receita_vinculada'])
-
-                # Vincula retroativamente as transações já importadas que casam com o padrão
-                Transacao.objects.filter(
-                    Q(id=t_padrao.id) | Q(descricao__icontains=desc_limpa),
-                    usuario=request.user,
-                ).update(receita_planejada=receita)
+                messages.success(
+                    request,
+                    f"Receita '{receita.nome}' atualizada! "
+                    f"{qtd} lançamento(s) reclassificado(s) automaticamente.",
+                )
+                return _redirect_pos_fixo(request)
 
         messages.success(request, f"Receita '{receita.nome}' atualizada com sucesso!")
     return _redirect_pos_fixo(request)
@@ -2111,3 +2280,34 @@ def sincronizar_conexao_ajax(request: HttpRequest, pk: int) -> JsonResponse:
         })
     except Exception as exc:
         return JsonResponse({'status': 'error', 'mensagem': str(exc)}, status=500)
+
+@login_required
+@require_POST
+def atualizar_saldo_livre_ajax(request: HttpRequest) -> JsonResponse:
+    """
+    Endpoint AJAX para atualizar o Saldo Livre.
+    Se is_manual=true, atualiza o saldo_manual e usar_saldo_manual=True.
+    Se is_manual=false, define usar_saldo_manual=False (voltando para o banco).
+    """
+    try:
+        body = json.loads(request.body)
+        is_manual = body.get('is_manual', False)
+        
+        perfil, _ = PerfilUsuario.objects.get_or_create(usuario=request.user)
+        
+        if is_manual:
+            novo_saldo = body.get('novo_saldo', '0')
+            novo_saldo_str = str(novo_saldo).replace(',', '.')
+            perfil.saldo_manual = Decimal(novo_saldo_str)
+            perfil.usar_saldo_manual = True
+        else:
+            perfil.usar_saldo_manual = False
+            
+        perfil.save()
+        
+        return JsonResponse({
+            'status': 'success',
+            'saldo_exibido': float(perfil.saldo_livre_atual)
+        })
+    except Exception as exc:
+        return JsonResponse({'status': 'error', 'mensagem': str(exc)}, status=400)

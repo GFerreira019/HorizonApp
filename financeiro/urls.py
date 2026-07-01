@@ -20,6 +20,7 @@ urlpatterns = [
     path('api/toggle-pago/<int:pk>/', views.toggle_pago, name='toggle_pago'),
     path('api/chart-data/', views.get_chart_data, name='get_chart_data'),
     path('api/reclassificar/', views.reclassificar_transacao_ajax, name='reclassificar_transacao_ajax'),
+    path('api/atualizar-saldo/', views.atualizar_saldo_livre_ajax, name='atualizar_saldo_livre_ajax'),
 
     # Exportação
     path('exportar-excel/', views.exportar_financas_excel, name='exportar_financas_excel'),

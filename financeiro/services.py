@@ -14,10 +14,146 @@ from .models import (
     Transacao, Categoria, MacroCategoria, RegraClassificacao,
     LoteImportacao, ConexaoBancaria, LimiteTemporario,
     OrcamentoCategoria, PlanejamentoMensal,
+    DespesaFixa, ReceitaPlanejada,
 )
 from . import telegram_bot
 
 logger = logging.getLogger(__name__)
+
+
+# =============================================================================
+# Automação de Classificação — Regras e Reclassificação Retroativa
+# =============================================================================
+
+def _extrair_palavra_chave(descricao: str) -> str:
+    """
+    Extrai e normaliza a palavra-chave de uma descrição de transação bancária.
+
+    Segue a "Regra de Ouro" do .cursorrules: remove prefixos ruidosos
+    ("Compra no débito - ", "Pix enviado - ", etc.) usando split por " - ".
+    Esta é a função canônica de limpeza do projeto — alinhada com
+    `_normalizar_transacao_pluggy` e `buscar_transacoes_ajax`.
+
+    Args:
+        descricao: Descrição original da transação (ex: "Compra no débito - Netflix").
+
+    Returns:
+        Palavra-chave limpa e sem espaços extras (ex: "Netflix").
+    """
+    if ' - ' in descricao:
+        return descricao.split(' - ', 1)[-1].strip()
+    return descricao.strip()
+
+
+def criar_regra_e_reclassificar(
+    usuario: Any,
+    transacao_padrao: 'Transacao',
+    categoria: 'Categoria',
+    despesa_fixa: Optional['DespesaFixa'] = None,
+    receita_planejada: Optional['ReceitaPlanejada'] = None,
+) -> int:
+    """
+    Cria ou atualiza uma RegraClassificacao e aplica reclassificação retroativa
+    em batch em todas as transações históricas pendentes do utilizador.
+
+    Deve ser chamada logo após o salvamento bem-sucedido de um provisionamento
+    (DespesaFixa ou ReceitaPlanejada) quando o utilizador vinculou uma
+    transação padrão.
+
+    Regras de negócio:
+        - A palavra-chave é extraída via `_extrair_palavra_chave`, eliminando
+          prefixos ruidosos ("Pix enviado - ", "Compra no débito - ", etc.).
+        - Se já existir uma RegraClassificacao com a mesma palavra-chave,
+          os campos de vínculo (despesa_vinculada / receita_vinculada) são
+          atualizados sem duplicar a regra (unique_together garante isso).
+        - O batch update retroativo atualiza APENAS transações com
+          `status_auditoria='pendente'` e `ignorado=False`, protegendo
+          classificações manuais já consolidadas pelo utilizador.
+        - A transação padrão é sempre incluída no batch, independente
+          do seu status_auditoria.
+
+    Args:
+        usuario: Instância do utilizador autenticado (multi-tenant safety).
+        transacao_padrao: Transação de referência selecionada pelo utilizador.
+        categoria: Categoria do provisionamento recém-salvo.
+        despesa_fixa: Instância de DespesaFixa, se aplicável.
+        receita_planejada: Instância de ReceitaPlanejada, se aplicável.
+
+    Returns:
+        Número de transações reclassificadas pelo batch update.
+    """
+    from django.db.models import Q
+
+    palavra_chave = _extrair_palavra_chave(transacao_padrao.descricao)
+
+    # ── 1. Criação/atualização da RegraClassificacao ─────────────────────
+    # unique_together = ['usuario', 'palavra_chave'] garante idempotência.
+    defaults_regra: Dict[str, Any] = {'categoria': categoria}
+    if despesa_fixa:
+        defaults_regra['despesa_vinculada'] = despesa_fixa
+    if receita_planejada:
+        defaults_regra['receita_vinculada'] = receita_planejada
+
+    regra, created = RegraClassificacao.objects.get_or_create(
+        usuario=usuario,
+        palavra_chave=palavra_chave,
+        defaults=defaults_regra,
+    )
+
+    if not created:
+        # Atualiza os vínculos mesmo que a regra existisse para outro provisionamento.
+        # O campo 'categoria' é sempre sincronizado para refletir o provisionamento atual.
+        update_fields = ['categoria']
+        regra.categoria = categoria
+        if despesa_fixa:
+            regra.despesa_vinculada = despesa_fixa
+            update_fields.append('despesa_vinculada')
+        if receita_planejada:
+            regra.receita_vinculada = receita_planejada
+            update_fields.append('receita_vinculada')
+        regra.save(update_fields=update_fields)
+
+    logger.info(
+        '%s RegraClassificacao "%s" -> categoria=%s (user=%s)',
+        'Criada' if created else 'Atualizada',
+        palavra_chave,
+        categoria.nome,
+        usuario.pk,
+    )
+
+    # ── 2. Batch update retroativo ────────────────────────────────────────
+    # Inclui sempre a transação padrão (referência do utilizador) + todas
+    # as transações pendentes cuja descrição case com a palavra-chave.
+    # Transações já 'consolidado' pelo utilizador NÃO são sobrescritas.
+    filtro_batch = Q(id=transacao_padrao.id) | Q(
+        descricao__icontains=palavra_chave,
+        status_auditoria=Transacao.StatusAuditoria.PENDENTE,
+        ignorado=False,
+    )
+
+    campos_update: Dict[str, Any] = {
+        'categoria': categoria,
+        'status_auditoria': Transacao.StatusAuditoria.CONSOLIDADO,
+    }
+    if despesa_fixa:
+        campos_update['despesa_fixa'] = despesa_fixa
+    if receita_planejada:
+        campos_update['receita_planejada'] = receita_planejada
+
+    # Isolamento multi-tenant: filtra SEMPRE pelo utilizador atual.
+    qtd_atualizadas = Transacao.objects.filter(
+        filtro_batch,
+        usuario=usuario,
+    ).update(**campos_update)
+
+    logger.info(
+        'Reclassificacao retroativa: %d transacoes atualizadas para "%s" (user=%s)',
+        qtd_atualizadas,
+        palavra_chave,
+        usuario.pk,
+    )
+
+    return qtd_atualizadas
 
 
 def classificar_nubank_inteligente(
@@ -363,6 +499,18 @@ class PluggyAPIClient:
             params['page'] += 1
         return todas
 
+    def buscar_saldos_contas(self, item_id: str) -> float:
+        """
+        Retorna a soma do saldo real de todas as contas (corrente, poupança, cartão) vinculadas a um item.
+        """
+        contas = self.buscar_contas_do_item(item_id)
+        saldo_total = 0.0
+        for conta in contas:
+            # O Pluggy retorna o saldo em 'balance'.
+            saldo = float(conta.get('balance', 0.0))
+            saldo_total += saldo
+        return saldo_total
+
     def buscar_contas_do_item(self, item_id: str) -> List[Dict[str, Any]]:
         """
         Retorna todas as contas (corrente, poupança, cartão) vinculadas a um item Pluggy.
@@ -672,8 +820,11 @@ def get_envelopes_progresso(usuario: Any, mes: int, ano: int) -> List[Dict[str, 
     Envelopes não possuem restrição de data por definição — o filtro é direto
     em tem_vencimento=False e ativo=True, sem usar ativas_na_data(), que pode
     excluir envelopes criados no meio do mês (data_inicio > 1º do mês).
+
+    Lógica de Estorno:
+        Gasto Efetivo = Soma(despesas normais) - Soma(estornos marcados como is_estorno=True)
     """
-    from django.db.models import Sum
+    from django.db.models import Sum, Q
     from decimal import Decimal
     from .models import DespesaFixa, Transacao
 
@@ -684,19 +835,44 @@ def get_envelopes_progresso(usuario: Any, mes: int, ano: int) -> List[Dict[str, 
         ativo=True,
     ).select_related('categoria', 'macro_categoria')
 
-
-    gastos = Transacao.objects.filter(
-        usuario=usuario,
-        data__month=mes,
-        data__year=ano,
-        ignorado=False,
-    ).values('categoria_id').annotate(total_gasto=Sum('valor'))
-
-    # Dicionário {categoria_id: Decimal(total)} — fallback Decimal para consistência
-    gastos_dict = {
-        item['categoria_id']: item['total_gasto'] or Decimal('0.00')
-        for item in gastos
+    # Gastos normais por categoria (excluindo estornos)
+    gastos_normais = (
+        Transacao.objects.filter(
+            usuario=usuario,
+            data__month=mes,
+            data__year=ano,
+            ignorado=False,
+            is_estorno=False,
+        )
+        .values('categoria_id')
+        .annotate(total=Sum('valor'))
+    )
+    # Dicionário {categoria_id: Decimal(total_gasto_normal)}
+    gastos_dict: dict = {
+        item['categoria_id']: item['total'] or Decimal('0.00')
+        for item in gastos_normais
     }
+
+    # Estornos: abatidos do gasto normal da categoria correspondente
+    estornos = (
+        Transacao.objects.filter(
+            usuario=usuario,
+            data__month=mes,
+            data__year=ano,
+            ignorado=False,
+            is_estorno=True,
+        )
+        .values('categoria_id')
+        .annotate(total=Sum('valor'))
+    )
+    for item in estornos:
+        cat_id = item['categoria_id']
+        valor_estorno = item['total'] or Decimal('0.00')
+        # Subtrai o estorno — garante que o saldo não fique negativo (mín. 0)
+        gastos_dict[cat_id] = max(
+            Decimal('0.00'),
+            gastos_dict.get(cat_id, Decimal('0.00')) - valor_estorno
+        )
 
     resultado = []
     for envelope in envelopes:
@@ -713,18 +889,26 @@ def get_envelopes_progresso(usuario: Any, mes: int, ano: int) -> List[Dict[str, 
         valor_restante = float(valor_planejado) - float(valor_gasto)
         
         # Cores pré-calculadas para evitar comparadores >= no template Django
-        if porcentagem_real >= 100:
+        if porcentagem_real > 100:
             cor_barra  = 'bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.5)]'
             cor_texto  = 'text-red-400'
             estourado  = True
+            limite_atingido = False
+        elif porcentagem_real == 100:
+            cor_barra  = 'bg-amber-400 shadow-[0_0_8px_rgba(251,191,36,0.4)]'
+            cor_texto  = 'text-amber-400'
+            estourado  = False
+            limite_atingido = True
         elif porcentagem_real >= 80:
             cor_barra  = 'bg-amber-400 shadow-[0_0_8px_rgba(251,191,36,0.4)]'
             cor_texto  = 'text-amber-400'
             estourado  = False
+            limite_atingido = False
         else:
             cor_barra  = 'bg-cyan-500 shadow-[0_0_8px_rgba(34,211,238,0.4)]'
             cor_texto  = 'text-cyan-400'
             estourado  = False
+            limite_atingido = False
 
         resultado.append({
             'nome_envelope': envelope.nome,
@@ -737,6 +921,7 @@ def get_envelopes_progresso(usuario: Any, mes: int, ano: int) -> List[Dict[str, 
             'cor_barra': cor_barra,
             'cor_texto': cor_texto,
             'estourado': estourado,
+            'limite_atingido': limite_atingido,
         })
         
     return sorted(resultado, key=lambda x: x['nome_envelope'])
